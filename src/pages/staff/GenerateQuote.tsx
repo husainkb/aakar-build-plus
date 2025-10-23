@@ -106,6 +106,21 @@ export default function GenerateQuote() {
   const handleDownloadExcel = () => {
     if (!quoteData) return;
 
+    const paymentSchedule = [
+      { srNo: 1, mode: 'Agreement', percent: 30 },
+      { srNo: 2, mode: 'PLINTH', percent: 15 },
+      { srNo: 3, mode: '1st Slab', percent: 5 },
+      { srNo: 4, mode: '2nd Slab', percent: 5 },
+      { srNo: 5, mode: '3rd Slab', percent: 5 },
+      { srNo: 6, mode: '4th Slab', percent: 5 },
+      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
+      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
+      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
+      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
+      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
+      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
+    ];
+
     const ws = XLSX.utils.aoa_to_sheet([
       ['', 'AAKAR CONSTRUCTION', '', '', '', ''],
       [],
@@ -128,7 +143,19 @@ export default function GenerateQuote() {
       ['Other Charges', quoteData.statutories.other],
       ['Total Statutories', quoteData.totalStatutories],
       [],
-      ['Grand Total', quoteData.grandTotal.toFixed(2)]
+      ['Grand Total', quoteData.grandTotal.toFixed(2)],
+      [],
+      [],
+      ['Payment Disbursement'],
+      ['Sr. No.', 'Payment Mode', 'Per %', 'Amount'],
+      ...paymentSchedule.map(p => [
+        p.srNo,
+        p.mode,
+        `${p.percent}%`,
+        (quoteData.agreementAmount * p.percent / 100).toFixed(2)
+      ]),
+      ['', 'OWN AMT', '', ''],
+      ['', '', '100%', quoteData.agreementAmount.toFixed(2)]
     ]);
 
     const wb = XLSX.utils.book_new();
@@ -153,7 +180,7 @@ export default function GenerateQuote() {
             <CardTitle>Select Property</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <Label>Building</Label>
                 <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
@@ -188,7 +215,7 @@ export default function GenerateQuote() {
                 </Select>
               </div>
             </div>
-            <Button onClick={handleGenerateQuote}>Generate Quote</Button>
+            <Button onClick={handleGenerateQuote} className="w-full sm:w-auto">Generate Quote</Button>
           </CardContent>
         </Card>
 
@@ -198,7 +225,7 @@ export default function GenerateQuote() {
               <CardTitle>Quote Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <div><strong>Building:</strong> {quoteData.building}</div>
                 <div><strong>Flat No:</strong> {quoteData.flatNo} ({quoteData.wing})</div>
                 <div><strong>Square Foot:</strong> {quoteData.superBuiltUp}</div>
@@ -206,12 +233,12 @@ export default function GenerateQuote() {
                 <div><strong>Loan Amount (95%):</strong> ₹{quoteData.loanAmount.toFixed(2)}</div>
                 <div><strong>Grand Total:</strong> ₹{quoteData.grandTotal.toFixed(2)}</div>
               </div>
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleDownloadExcel}>
+              <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                <Button onClick={handleDownloadExcel} className="w-full sm:w-auto">
                   <Download className="mr-2 h-4 w-4" />
                   Download Excel
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Share2 className="mr-2 h-4 w-4" />
                   Share via Email
                 </Button>
