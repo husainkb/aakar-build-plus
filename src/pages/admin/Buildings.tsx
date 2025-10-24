@@ -246,11 +246,11 @@ export default function Buildings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16 max-w-screen-xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Buildings</h1>
-            <p className="text-sm text-muted-foreground">Manage your building properties and pricing.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Buildings</h1>
+            <p className="text-muted-foreground">Manage your building inventory and details.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
@@ -407,39 +407,41 @@ export default function Buildings() {
           <CardHeader>
             <CardTitle>All Buildings</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[150px]">Name</TableHead>
-                  <TableHead className="min-w-[120px]">Rate/Sqft</TableHead>
-                  <TableHead className="min-w-[120px]">Maintenance</TableHead>
-                  <TableHead className="min-w-[120px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {buildings.map((building) => (
-                  <TableRow key={building.id}>
-                    <TableCell className="font-medium">{building.name}</TableCell>
-                    <TableCell>₹{building.rate_per_sqft.toFixed(2)}</TableCell>
-                    <TableCell>₹{building.maintenance.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(building)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDuplicate(building)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(building.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+          <CardContent className="overflow-x-auto p-0">
+            <div className="min-w-[400px] w-full">
+              <Table className="w-full text-sm">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">Name</TableHead>
+                    <TableHead className="min-w-[120px]">Rate/Sqft</TableHead>
+                    <TableHead className="min-w-[120px]">Maintenance</TableHead>
+                    <TableHead className="min-w-[120px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {buildings.map((building) => (
+                    <TableRow key={building.id} className="hover:bg-muted transition-colors">
+                      <TableCell className="font-medium break-words max-w-[180px]">{building.name}</TableCell>
+                      <TableCell>₹{building.rate_per_sqft.toFixed(2)}</TableCell>
+                      <TableCell>₹{building.maintenance.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(building)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDuplicate(building)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(building.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

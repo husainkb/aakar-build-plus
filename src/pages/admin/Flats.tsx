@@ -260,8 +260,8 @@ export default function Flats() {
       <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Flats</h1>
-            <p className="text-sm text-muted-foreground">Manage your flat inventory and booking status.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Flats</h1>
+            <p className="text-muted-foreground">Manage your flat inventory and booking status.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
