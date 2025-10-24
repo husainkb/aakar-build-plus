@@ -25,7 +25,7 @@ interface Flat {
   floor: number;
   square_foot: number;
   type: string;
-  booked_status: string;
+  booked_status: string; // Should be 'Booked' or 'Not Booked'
   flat_experience: string;
   terrace_area: number;
   buildings?: { name: string };
@@ -44,7 +44,7 @@ export default function Flats() {
     floor: '',
     square_foot: '',
     type: '',
-    booked_status: 'not booked',
+    booked_status: 'Not Booked', // default value matches DB constraint
     flat_experience: 'Good',
     terrace_area: '0',
   });
@@ -111,7 +111,7 @@ export default function Flats() {
       newErrors.type = 'Type is required';
     }
 
-    if (!formData.booked_status) {
+    if (!formData.booked_status || !['Booked', 'Not Booked'].includes(formData.booked_status)) {
       newErrors.booked_status = 'Booked Status is required';
     }
 
@@ -140,7 +140,7 @@ export default function Flats() {
       floor: parseInt(formData.floor),
       square_foot: parseFloat(formData.square_foot),
       type: formData.type.trim(),
-      booked_status: formData.booked_status,
+      booked_status: formData.booked_status, // must be 'Booked' or 'Not Booked'
       flat_experience: formData.flat_experience,
       terrace_area: parseFloat(formData.terrace_area) || 0,
     };
@@ -247,7 +247,7 @@ export default function Flats() {
       floor: '',
       square_foot: '',
       type: '',
-      booked_status: 'not booked',
+      booked_status: 'Not Booked', // default value matches DB constraint
       flat_experience: 'Good',
       terrace_area: '0',
     });
@@ -257,8 +257,8 @@ export default function Flats() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Flats</h1>
             <p className="text-sm text-muted-foreground">Manage your flat inventory and booking status.</p>
@@ -376,8 +376,8 @@ export default function Flats() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="booked">Booked</SelectItem>
-                        <SelectItem value="not booked">Not Booked</SelectItem>
+                        <SelectItem value="Booked">Booked</SelectItem>
+                        <SelectItem value="Not Booked">Not Booked</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.booked_status && <p className="text-xs text-destructive">{errors.booked_status}</p>}
@@ -421,22 +421,22 @@ export default function Flats() {
               <CardTitle>All Flats</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-full w-full overflow-x-auto">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[150px]">Building</TableHead>
-                    <TableHead className="min-w-[80px]">Flat No</TableHead>
-                    <TableHead className="min-w-[80px]">Wing</TableHead>
-                    <TableHead className="min-w-[60px]">Floor</TableHead>
-                    <TableHead className="min-w-[100px]">Sqft</TableHead>
-                    <TableHead className="min-w-[100px]">Type</TableHead>
-                    <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[150px]">Actions</TableHead>
+                  <TableRow className="flex flex-wrap md:table-row">
+                    <TableHead className="min-w-[120px]">Building</TableHead>
+                    <TableHead className="min-w-[70px]">Flat No</TableHead>
+                    <TableHead className="min-w-[70px]">Wing</TableHead>
+                    <TableHead className="min-w-[50px]">Floor</TableHead>
+                    <TableHead className="min-w-[80px]">Sqft</TableHead>
+                    <TableHead className="min-w-[80px]">Type</TableHead>
+                    <TableHead className="min-w-[90px]">Status</TableHead>
+                    <TableHead className="min-w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {flats.map((flat) => (
-                    <TableRow key={flat.id}>
+                    <TableRow key={flat.id} className="flex flex-wrap md:table-row">
                       <TableCell>{flat.buildings?.name}</TableCell>
                       <TableCell className="font-medium">{flat.flat_no}</TableCell>
                       <TableCell>{flat.wing}</TableCell>
@@ -444,12 +444,12 @@ export default function Flats() {
                       <TableCell>{flat.square_foot.toFixed(2)}</TableCell>
                       <TableCell>{flat.type}</TableCell>
                       <TableCell>
-                        <Badge variant={flat.booked_status === 'booked' ? 'default' : 'secondary'}>
+                        <Badge variant={flat.booked_status === 'Booked' ? 'default' : 'secondary'}>
                           {flat.booked_status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(flat)}>
                             <Pencil className="h-4 w-4" />
                           </Button>

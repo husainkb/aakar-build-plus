@@ -27,7 +27,7 @@ export default function StaffDashboard() {
       const { count: bookedCount } = await supabase
         .from('flats')
         .select('*', { count: 'exact', head: true })
-        .eq('booked_status', 'Booked');
+        .eq('booked_status', 'booked');
 
       setStats({
         totalBuildings: buildingsCount || 0,
@@ -41,13 +41,15 @@ export default function StaffDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Staff Dashboard</h1>
-          <p className="text-muted-foreground">Generate quotes and manage customer inquiries.</p>
+      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Staff Dashboard</h1>
+            <p className="text-muted-foreground">Generate quotes and manage customer inquiries.</p>
+          </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3 sm:grid-cols-2 grid-cols-1">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Buildings</CardTitle>

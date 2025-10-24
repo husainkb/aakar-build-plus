@@ -30,7 +30,7 @@ const Index = () => {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="max-w-4xl text-center">
+        <div className="max-w-4xl text-center space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
           <h1 className="mb-6 text-5xl font-bold tracking-tight">
             Professional Construction
             <span className="block text-primary">Management System</span>

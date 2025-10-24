@@ -25,7 +25,7 @@ export default function AdminDashboard() {
       const { count: bookedCount } = await supabase
         .from('flats')
         .select('*', { count: 'exact', head: true })
-        .eq('booked_status', 'Booked');
+        .eq('booked_status', 'booked');
 
       setStats({
         totalBuildings: buildingsCount || 0,
@@ -47,10 +47,12 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's an overview of your properties.</p>
+      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back! Here's an overview of your properties.</p>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
