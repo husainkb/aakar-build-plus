@@ -22,16 +22,20 @@ export default function AdminDashboard() {
         .from('flats')
         .select('*', { count: 'exact', head: true });
 
-      const { count: bookedCount } = await supabase
+      // Fix: handle all possible cases for booked_status (case-insensitive, and also 'Booked', 'booked', 'BOOKED', etc.)
+      const { data: flatsData, error } = await supabase
         .from('flats')
-        .select('*', { count: 'exact', head: true })
-        .eq('booked_status', 'booked');
+        .select('booked_status');
+      let bookedCount = 0;
+      if (flatsData && Array.isArray(flatsData)) {
+        bookedCount = flatsData.filter(f => String(f.booked_status).toLowerCase() === 'booked').length;
+      }
 
       setStats({
         totalBuildings: buildingsCount || 0,
         totalFlats: flatsCount || 0,
-        bookedFlats: bookedCount || 0,
-        availableFlats: (flatsCount || 0) - (bookedCount || 0),
+        bookedFlats: bookedCount,
+        availableFlats: flatsData ? flatsData.filter(f => String(f.booked_status).toLowerCase() !== 'booked').length : 0,
       });
     };
 
@@ -55,11 +59,11 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((card) => {
             const Icon = card.icon;
             return (
-              <Card key={card.title}>
+              <Card key={card.title} className="w-full">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                   <Icon className={`h-4 w-4 ${card.color}`} />
@@ -72,7 +76,7 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        <Card>
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
