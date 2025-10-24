@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Share2 } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Building {
   id: string;
@@ -103,6 +105,96 @@ export default function GenerateQuote() {
     toast.success('Quote generated successfully!');
   };
 
+  const handleDownloadPDF = () => {
+    if (!quoteData) return;
+
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AAKAR CONSTRUCTION', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text(`${quoteData.building}`, 20, 35);
+    
+    // Payment schedule and statutories
+    const paymentSchedule = [
+      { srNo: 1, mode: 'Agreement', percent: 30 },
+      { srNo: 2, mode: 'PLINTH', percent: 15 },
+      { srNo: 3, mode: '1st Slab', percent: 5 },
+      { srNo: 4, mode: '2nd Slab', percent: 5 },
+      { srNo: 5, mode: '3rd Slab', percent: 5 },
+      { srNo: 6, mode: '4th Slab', percent: 5 },
+      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
+      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
+      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
+      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
+      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
+      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
+    ];
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['', 'Super Built Up Area', 'Terrace Area', 'Total']],
+      body: [[`Flat No. ${quoteData.flatNo}`, quoteData.superBuiltUp, quoteData.terraceArea, quoteData.totalArea]],
+      theme: 'plain',
+      styles: { fontSize: 9 }
+    });
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 5,
+      head: [['', 'Loan Amount', 'Agreement Amount']],
+      body: [['', `₹${quoteData.loanAmount.toLocaleString('en-IN')}`, `₹${quoteData.agreementAmount.toLocaleString('en-IN')}`]],
+      theme: 'plain',
+      styles: { fontSize: 9 }
+    });
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['Sr. No.', 'Payment Mode', 'Per %', 'Amount']],
+      body: [
+        ...paymentSchedule.map(p => [p.srNo, p.mode, `${p.percent}%`, `₹${((quoteData.agreementAmount * p.percent) / 100).toLocaleString('en-IN')}`]),
+        ['', 'OWN AMT', '100%', `₹${quoteData.agreementAmount.toLocaleString('en-IN')}`]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 }
+    });
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Statuatories', 20, (doc as any).lastAutoTable.finalY + 15);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Sr. No.', 'Payment Mode', 'Amount']],
+      body: [
+        [15, 'maintenance', `₹${quoteData.statutories.maintenance.toLocaleString('en-IN')}`],
+        [16, 'Electical & Water Charges', `₹${quoteData.statutories.electrical.toLocaleString('en-IN')}`],
+        [17, 'Registration Charges', `₹${quoteData.statutories.registration.toLocaleString('en-IN')}`],
+        [18, 'GST/S Tax', `₹${quoteData.statutories.gst.toLocaleString('en-IN')}`],
+        [19, 'Stamp Duty', `₹${quoteData.statutories.stampDuty.toLocaleString('en-IN')}`],
+        [20, 'Legal Charges', `₹${quoteData.statutories.legal.toLocaleString('en-IN')}`],
+        [21, 'Other Charges', `₹${quoteData.statutories.other.toLocaleString('en-IN')}`],
+        ['', 'Total', `₹${quoteData.totalStatutories.toLocaleString('en-IN')}`]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 }
+    });
+
+    doc.setFontSize(12);
+    doc.text(`Grand Total: ₹${quoteData.grandTotal.toLocaleString('en-IN')}`, 20, (doc as any).lastAutoTable.finalY + 10);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const noteY = (doc as any).lastAutoTable.finalY + 20;
+    doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, 20, noteY);
+    doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', 20, noteY + 5);
+    doc.text('flat rate increase by Rs.50/- per sqft', 20, noteY + 10);
+
+    doc.save(`AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`);
+    toast.success('PDF quote downloaded successfully!');
+  };
+
   const handleDownloadExcel = () => {
     if (!quoteData) return;
 
@@ -122,46 +214,43 @@ export default function GenerateQuote() {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ['', 'AAKAR CONSTRUCTION', '', '', '', ''],
+      ['', `${quoteData.building}`, '', '', '', ''],
       [],
       ['', 'Super Built Up Area', 'Terrace Area', 'Total'],
-      ['Flat No.', quoteData.flatNo, quoteData.superBuiltUp, quoteData.terraceArea, quoteData.totalArea],
+      [`Flat No.`, quoteData.flatNo, quoteData.superBuiltUp, quoteData.terraceArea, quoteData.totalArea],
       [],
-      ['', '', 'Loan Amount', 'Agreement Amount'],
-      ['', '', quoteData.loanAmount.toFixed(2), quoteData.agreementAmount.toFixed(2)],
+      ['', '', 'loan amount', 'Agreement amount'],
+      ['', '', quoteData.loanAmount.toFixed(0), quoteData.agreementAmount.toFixed(0)],
       [],
-      ['Building:', quoteData.building],
-      ['Wing:', quoteData.wing],
+      ['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount'],
+      ...paymentSchedule.map(p => [p.srNo, p.mode, `${p.percent}%`, '', (quoteData.agreementAmount * p.percent / 100).toFixed(0)]),
+      ['', 'OWN AMT', '', '', ''],
+      ['', '', '100%', '', quoteData.agreementAmount.toFixed(0)],
       [],
-      ['Statutories'],
-      ['Maintenance', quoteData.statutories.maintenance],
-      ['Electrical & Water Charges', quoteData.statutories.electrical],
-      ['Registration Charges', quoteData.statutories.registration],
-      ['GST/S Tax', quoteData.statutories.gst],
-      ['Stamp Duty', quoteData.statutories.stampDuty],
-      ['Legal Charges', quoteData.statutories.legal],
-      ['Other Charges', quoteData.statutories.other],
-      ['Total Statutories', quoteData.totalStatutories],
+      ['', '', 'Total Flat Amt', '', quoteData.agreementAmount.toFixed(0)],
+      ['Statuatories'],
+      ['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount'],
+      [15, 'maintenance', quoteData.statutories.maintenance.toFixed(0), '', quoteData.statutories.maintenance.toFixed(0)],
+      [16, 'Electical & Water Charges', quoteData.statutories.electrical.toFixed(0), '', quoteData.statutories.electrical.toFixed(0)],
+      [17, 'Registration Charges', '1%', '', quoteData.statutories.registration.toFixed(0)],
+      [18, 'GST/S Tax', '1%', '', quoteData.statutories.gst.toFixed(0)],
+      [19, 'Stamp Duty', '7%', '', quoteData.statutories.stampDuty.toFixed(0)],
+      [20, 'Legal Charges', quoteData.statutories.legal.toFixed(0), '', quoteData.statutories.legal.toFixed(0)],
+      [21, 'Other Charges', quoteData.statutories.other.toFixed(0), '', quoteData.statutories.other.toFixed(0)],
+      ['', '', 'Total', '', quoteData.totalStatutories.toFixed(0)],
       [],
-      ['Grand Total', quoteData.grandTotal.toFixed(2)],
+      ['', 'Grand Total', '', '', quoteData.grandTotal.toLocaleString('en-IN')],
       [],
       [],
-      ['Payment Disbursement'],
-      ['Sr. No.', 'Payment Mode', 'Per %', 'Amount'],
-      ...paymentSchedule.map(p => [
-        p.srNo,
-        p.mode,
-        `${p.percent}%`,
-        (quoteData.agreementAmount * p.percent / 100).toFixed(2)
-      ]),
-      ['', 'OWN AMT', '', ''],
-      ['', '', '100%', quoteData.agreementAmount.toFixed(2)]
+      [`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`],
+      ['disbursment within 30 days from booking date. Failing to do so I agree that'],
+      ['flat rate increase by Rs.50/- per sqft'],
     ]);
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Quote');
     XLSX.writeFile(wb, `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.xlsx`);
-    toast.success('Quote downloaded successfully!');
+    toast.success('Excel quote downloaded successfully!');
   };
 
   const wings = [...new Set(flats.map(f => f.wing))];
@@ -234,13 +323,13 @@ export default function GenerateQuote() {
                 <div><strong>Grand Total:</strong> ₹{quoteData.grandTotal.toFixed(2)}</div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                <Button onClick={handleDownloadExcel} className="w-full sm:w-auto">
+                <Button onClick={handleDownloadPDF} className="w-full sm:w-auto">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Button>
+                <Button onClick={handleDownloadExcel} variant="outline" className="w-full sm:w-auto">
                   <Download className="mr-2 h-4 w-4" />
                   Download Excel
-                </Button>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share via Email
                 </Button>
               </div>
             </CardContent>

@@ -44,10 +44,11 @@ export default function Flats() {
     floor: '',
     square_foot: '',
     type: '',
-    booked_status: 'Not Booked',
-    flat_experience: '',
+    booked_status: 'not booked',
+    flat_experience: 'Good',
     terrace_area: '0',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchBuildings();
@@ -80,11 +81,53 @@ export default function Flats() {
     }
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.building_id) {
+      newErrors.building_id = 'Building is required';
+    }
+
+    const flatNo = parseInt(formData.flat_no);
+    if (!formData.flat_no || isNaN(flatNo) || flatNo <= 0) {
+      newErrors.flat_no = 'Flat No must be greater than 0';
+    }
+
+    if (!formData.wing.trim() || formData.wing.length < 1 || formData.wing.length > 50) {
+      newErrors.wing = 'Wing must be between 1 and 50 characters';
+    }
+
+    const floor = parseInt(formData.floor);
+    if (formData.floor === '' || isNaN(floor) || floor < 0) {
+      newErrors.floor = 'Floor must be 0 or greater';
+    }
+
+    const squareFoot = parseFloat(formData.square_foot);
+    if (!formData.square_foot || isNaN(squareFoot) || squareFoot <= 0) {
+      newErrors.square_foot = 'Square Foot must be greater than 0';
+    }
+
+    if (!formData.type.trim()) {
+      newErrors.type = 'Type is required';
+    }
+
+    if (!formData.booked_status) {
+      newErrors.booked_status = 'Booked Status is required';
+    }
+
+    if (!formData.flat_experience) {
+      newErrors.flat_experience = 'Flat Experience is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.building_id) {
-      toast.error('Please select a building');
+    if (!validateForm()) {
+      toast.error('Please fix validation errors');
       return;
     }
 
@@ -93,10 +136,10 @@ export default function Flats() {
     const flatData = {
       building_id: formData.building_id,
       flat_no: parseInt(formData.flat_no),
-      wing: formData.wing,
+      wing: formData.wing.trim(),
       floor: parseInt(formData.floor),
       square_foot: parseFloat(formData.square_foot),
-      type: formData.type,
+      type: formData.type.trim(),
       booked_status: formData.booked_status,
       flat_experience: formData.flat_experience,
       terrace_area: parseFloat(formData.terrace_area) || 0,
@@ -144,9 +187,10 @@ export default function Flats() {
       square_foot: flat.square_foot.toString(),
       type: flat.type,
       booked_status: flat.booked_status,
-      flat_experience: flat.flat_experience || '',
+      flat_experience: flat.flat_experience || 'Good',
       terrace_area: flat.terrace_area?.toString() || '0',
     });
+    setErrors({});
     setDialogOpen(true);
   };
 
@@ -167,7 +211,7 @@ export default function Flats() {
   };
 
   const handleDuplicate = async (flat: Flat) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('flats')
       .insert([{
         building_id: flat.building_id,
@@ -179,13 +223,19 @@ export default function Flats() {
         booked_status: flat.booked_status,
         flat_experience: flat.flat_experience,
         terrace_area: flat.terrace_area,
-      }]);
+      }])
+      .select('*, buildings(name)')
+      .single();
 
     if (error) {
       toast.error('Failed to duplicate flat');
     } else {
       toast.success('Flat duplicated successfully');
       fetchFlats();
+      // Auto-open edit modal with duplicated flat
+      if (data) {
+        handleEdit(data);
+      }
     }
   };
 
@@ -197,27 +247,28 @@ export default function Flats() {
       floor: '',
       square_foot: '',
       type: '',
-      booked_status: 'Not Booked',
-      flat_experience: '',
+      booked_status: 'not booked',
+      flat_experience: 'Good',
       terrace_area: '0',
     });
     setEditingFlat(null);
+    setErrors({});
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Flats</h1>
-            <p className="text-muted-foreground">Manage your flat inventory and booking status.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Flats</h1>
+            <p className="text-sm text-muted-foreground">Manage your flat inventory and booking status.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button disabled={buildings.length === 0}>
+              <Button disabled={buildings.length === 0} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Flat
               </Button>
@@ -227,11 +278,11 @@ export default function Flats() {
                 <DialogTitle>{editingFlat ? 'Edit Flat' : 'Add New Flat'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="building">Building *</Label>
                     <Select value={formData.building_id} onValueChange={(value) => setFormData({ ...formData, building_id: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className={errors.building_id ? 'border-destructive' : ''}>
                         <SelectValue placeholder="Select building" />
                       </SelectTrigger>
                       <SelectContent>
@@ -242,16 +293,20 @@ export default function Flats() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.building_id && <p className="text-xs text-destructive">{errors.building_id}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="flat_no">Flat No *</Label>
                     <Input
                       id="flat_no"
                       type="number"
+                      min="1"
                       value={formData.flat_no}
                       onChange={(e) => setFormData({ ...formData, flat_no: e.target.value })}
+                      className={errors.flat_no ? 'border-destructive' : ''}
                       required
                     />
+                    {errors.flat_no && <p className="text-xs text-destructive">{errors.flat_no}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="wing">Wing *</Label>
@@ -259,18 +314,23 @@ export default function Flats() {
                       id="wing"
                       value={formData.wing}
                       onChange={(e) => setFormData({ ...formData, wing: e.target.value })}
+                      className={errors.wing ? 'border-destructive' : ''}
                       required
                     />
+                    {errors.wing && <p className="text-xs text-destructive">{errors.wing}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="floor">Floor *</Label>
                     <Input
                       id="floor"
                       type="number"
+                      min="0"
                       value={formData.floor}
                       onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                      className={errors.floor ? 'border-destructive' : ''}
                       required
                     />
+                    {errors.floor && <p className="text-xs text-destructive">{errors.floor}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="square_foot">Square Foot *</Label>
@@ -278,10 +338,13 @@ export default function Flats() {
                       id="square_foot"
                       type="number"
                       step="0.01"
+                      min="0"
                       value={formData.square_foot}
                       onChange={(e) => setFormData({ ...formData, square_foot: e.target.value })}
+                      className={errors.square_foot ? 'border-destructive' : ''}
                       required
                     />
+                    {errors.square_foot && <p className="text-xs text-destructive">{errors.square_foot}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="terrace_area">Terrace Area</Label>
@@ -289,43 +352,52 @@ export default function Flats() {
                       id="terrace_area"
                       type="number"
                       step="0.01"
+                      min="0"
                       value={formData.terrace_area}
                       onChange={(e) => setFormData({ ...formData, terrace_area: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="type">Type *</Label>
+                    <Label htmlFor="type">Type * (e.g., 1BHK, 2BHK)</Label>
                     <Input
                       id="type"
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className={errors.type ? 'border-destructive' : ''}
                       placeholder="e.g., 2BHK, 3BHK"
                       required
                     />
+                    {errors.type && <p className="text-xs text-destructive">{errors.type}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="booked_status">Booked Status *</Label>
                     <Select value={formData.booked_status} onValueChange={(value) => setFormData({ ...formData, booked_status: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className={errors.booked_status ? 'border-destructive' : ''}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Booked">Booked</SelectItem>
-                        <SelectItem value="Not Booked">Not Booked</SelectItem>
+                        <SelectItem value="booked">Booked</SelectItem>
+                        <SelectItem value="not booked">Not Booked</SelectItem>
                       </SelectContent>
                     </Select>
+                    {errors.booked_status && <p className="text-xs text-destructive">{errors.booked_status}</p>}
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="flat_experience">Flat Experience</Label>
-                    <Input
-                      id="flat_experience"
-                      value={formData.flat_experience}
-                      onChange={(e) => setFormData({ ...formData, flat_experience: e.target.value })}
-                      placeholder="Additional details"
-                    />
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="flat_experience">Flat Experience *</Label>
+                    <Select value={formData.flat_experience} onValueChange={(value) => setFormData({ ...formData, flat_experience: value })}>
+                      <SelectTrigger className={errors.flat_experience ? 'border-destructive' : ''}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Good">Good</SelectItem>
+                        <SelectItem value="Better">Better</SelectItem>
+                        <SelectItem value="Best">Best</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.flat_experience && <p className="text-xs text-destructive">{errors.flat_experience}</p>}
                   </div>
                 </div>
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                   {loading ? 'Saving...' : editingFlat ? 'Update Flat' : 'Create Flat'}
                 </Button>
               </form>
@@ -348,18 +420,18 @@ export default function Flats() {
             <CardHeader>
               <CardTitle>All Flats</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Building</TableHead>
-                    <TableHead>Flat No</TableHead>
-                    <TableHead>Wing</TableHead>
-                    <TableHead>Floor</TableHead>
-                    <TableHead>Sqft</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="min-w-[150px]">Building</TableHead>
+                    <TableHead className="min-w-[80px]">Flat No</TableHead>
+                    <TableHead className="min-w-[80px]">Wing</TableHead>
+                    <TableHead className="min-w-[60px]">Floor</TableHead>
+                    <TableHead className="min-w-[100px]">Sqft</TableHead>
+                    <TableHead className="min-w-[100px]">Type</TableHead>
+                    <TableHead className="min-w-[100px]">Status</TableHead>
+                    <TableHead className="min-w-[150px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -369,10 +441,10 @@ export default function Flats() {
                       <TableCell className="font-medium">{flat.flat_no}</TableCell>
                       <TableCell>{flat.wing}</TableCell>
                       <TableCell>{flat.floor}</TableCell>
-                      <TableCell>{flat.square_foot}</TableCell>
+                      <TableCell>{flat.square_foot.toFixed(2)}</TableCell>
                       <TableCell>{flat.type}</TableCell>
                       <TableCell>
-                        <Badge variant={flat.booked_status === 'Booked' ? 'default' : 'secondary'}>
+                        <Badge variant={flat.booked_status === 'booked' ? 'default' : 'secondary'}>
                           {flat.booked_status}
                         </Badge>
                       </TableCell>

@@ -23,14 +23,9 @@ const Index = () => {
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">Aakar Construction</span>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => navigate('/auth/login')}>
-              Sign In
-            </Button>
-            <Button onClick={() => navigate('/auth/signup')}>
-              Get Started
-            </Button>
-          </div>
+          <Button onClick={() => navigate('/auth/login')}>
+            Login
+          </Button>
         </div>
       </header>
 
@@ -44,13 +39,10 @@ const Index = () => {
             Streamline your construction projects with our comprehensive building and flat management platform.
           </p>
 
-          <div className="mb-12 flex flex-wrap justify-center gap-4">
-            <Button size="lg" onClick={() => navigate('/auth/signup')}>
-              Get Started
+          <div className="mb-12">
+            <Button size="lg" onClick={() => navigate('/auth/login')}>
+              Login to Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate('/auth/login')}>
-              Sign In
             </Button>
           </div>
 
