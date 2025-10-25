@@ -97,9 +97,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border">
-            <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-              <Building2 className="h-6 w-6 text-sidebar-primary" />
-              <span className="ml-2 text-lg font-semibold text-sidebar-foreground">Aakar Construction</span>
+            <div className="flex items-center border-b border-sidebar-border px-6 w-48 py-1">
+              <img src="/images/logo.png" alt="Aakar Construction Logo" className="h-auto max-w-full" />
             </div>
             <SidebarNav />
           </SheetContent>
@@ -108,9 +107,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Desktop: Fixed Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r bg-sidebar border-sidebar-border">
-        <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-          <Building2 className="h-6 w-6 text-sidebar-primary" />
-          <span className="ml-2 text-lg font-semibold text-sidebar-foreground">Aakar Construction</span>
+        <div className="flex py-1 items-center border-b border-sidebar-border px-6">
+          <div className='w-[9.6rem]'>
+            <img src="/images/logo.png" alt="Aakar Construction Logo" className="h-auto max-w-full" />
+          </div>
         </div>
         <SidebarNav />
       </aside>

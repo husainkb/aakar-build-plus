@@ -188,7 +188,7 @@ export default function GenerateQuote() {
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('AAKAR CONSTRUCTION', 105, currentY, { align: 'center' });
+    doc.text('', 105, currentY, { align: 'center' });
     currentY += 10;
     
     doc.setFontSize(14);
@@ -328,87 +328,8 @@ export default function GenerateQuote() {
     doc.text('Purchaser Signature', margin, currentY);
     doc.line(margin, currentY + 2, margin + 60, currentY + 2);
 
-    doc.save(`AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`);
+    doc.save(`Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`);
     toast.success('PDF quote downloaded successfully!');
-  };
-
-  const handleDownloadExcel = () => {
-    if (!quoteData) return;
-
-    const paymentSchedule = [
-      { srNo: 1, mode: 'Agreement', percent: 30 },
-      { srNo: 2, mode: 'PLINTH', percent: 15 },
-      { srNo: 3, mode: '1st Slab', percent: 5 },
-      { srNo: 4, mode: '2nd Slab', percent: 5 },
-      { srNo: 5, mode: '3rd Slab', percent: 5 },
-      { srNo: 6, mode: '4th Slab', percent: 5 },
-      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
-      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
-      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
-      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
-      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
-      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([
-      // Header
-      ['AAKAR CONSTRUCTION'],
-      [quoteData.building],
-      [],
-      // Area information in tabular format
-      ['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total'],
-      [quoteData.flatNo, quoteData.superBuiltUp, quoteData.terraceArea, quoteData.totalArea],
-      [],
-      // Loan and Agreement amounts in tabular format
-      ['', 'loan amount', 'Agreement amount'],
-      ['', Math.round(quoteData.loanAmount), Math.round(quoteData.agreementAmount)],
-      [],
-      // Payment schedule header
-      ['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount'],
-      // Payment schedule rows
-      ...paymentSchedule.map(p => [
-        p.srNo, 
-        p.mode, 
-        `${p.percent}%`, 
-        '', 
-        Math.round((quoteData.agreementAmount * p.percent) / 100)
-      ]),
-      // OWN AMT row
-      ['', 'OWN AMT', '', '', ''],
-      ['', '', '100%', '', Math.round(quoteData.agreementAmount)],
-      [],
-      // Total Flat Amount
-      ['', '', 'Total Flat Amt', '', Math.round(quoteData.agreementAmount)],
-      [],
-      // Statuatories header
-      ['Statuatories'],
-      ['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount'],
-      // Statuatories rows
-      [15, 'maintenance', quoteData.statutoriesPercent.maintenance, '', Math.round(quoteData.statutories.maintenance)],
-      [16, 'Electical & Water Charges', quoteData.statutoriesPercent.electrical, '', Math.round(quoteData.statutories.electrical)],
-      [17, 'Registration Charges', quoteData.statutoriesPercent.registration, '', Math.round(quoteData.statutories.registration)],
-      [18, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', Math.round(quoteData.statutories.gst)],
-      [19, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', Math.round(quoteData.statutories.stampDuty)],
-      [20, 'Legal Charges', quoteData.statutoriesPercent.legal, '', Math.round(quoteData.statutories.legal)],
-      [21, 'Other Charges', quoteData.statutoriesPercent.other, '', Math.round(quoteData.statutories.other)],
-      ['', '', 'Total', '', Math.round(quoteData.totalStatutories)],
-      [],
-      // Grand Total
-      ['', 'Grand Total', '', '', Math.round(quoteData.grandTotal).toLocaleString('en-IN')],
-      [],
-      // Terms and conditions
-      [`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`],
-      ['disbursment within 30 days from booking date. Failing to do so I agree that'],
-      ['flat rate increase by Rs.50/- per sqft'],
-      [],
-      // Signature
-      ['', 'Purchaser Signature', '', '', '']
-    ]);
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Quote');
-    XLSX.writeFile(wb, `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.xlsx`);
-    toast.success('Excel quote downloaded successfully!');
   };
 
   const handleShareQuote = async () => {
@@ -432,7 +353,7 @@ export default function GenerateQuote() {
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('AAKAR CONSTRUCTION', 105, currentY, { align: 'center' });
+    doc.text('', 105, currentY, { align: 'center' });
     currentY += 10;
     
     doc.setFontSize(14);
@@ -583,7 +504,7 @@ export default function GenerateQuote() {
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
-          title: 'Aakar Construction Quote',
+          title: 'Quote',
           text: message,
           files: [pdfFile]
         });
@@ -862,10 +783,6 @@ export default function GenerateQuote() {
                 <Button onClick={handleDownloadPDF} className="w-full sm:w-auto">
                   <FileText className="mr-2 h-4 w-4" />
                   Download PDF
-                </Button>
-                <Button onClick={handleDownloadExcel} variant="outline" className="w-full sm:w-auto">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Excel
                 </Button>
                 <Button onClick={handleShareQuote} variant="secondary" className="w-full sm:w-auto">
                   <Share2 className="mr-2 h-4 w-4" />
