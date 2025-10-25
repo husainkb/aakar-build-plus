@@ -42,9 +42,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen flex flex-col home">
       {/* Full Width Header with Same Background */}
-      <header className="w-full bg-gradient-to-br from-primary/5 via-background to-accent/5 border-b">
+      <header className="w-full border-[#484848] border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className='w-[9.6rem]'>
@@ -61,48 +61,41 @@ const Index = () => {
           <div className="w-full max-w-2xl space-y-6 sm:space-y-8 py-8 lg:py-0">
             {/* Main Heading */}
             <div className="text-center space-y-4 sm:space-y-6">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
                 Professional Construction
-                <span className="block text-primary mt-2">Management System</span>
+                <span className="block text-[#78c0c5] mt-2">Management System</span>
               </h1>
-              <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+              <p className="text-base sm:text-lg lg:text-xl text-[#bababa] max-w-2xl mx-auto px-4">
                 Streamline your construction projects with our comprehensive building and flat management platform.
               </p>
             </div>
 
-            {/* Get Started Button */}
-            <div className="flex justify-center">
-              <Button size="lg" className="px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg">
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            </div>
 
             {/* Features Grid - Responsive */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8 sm:mt-12 px-2">
-              <Card className="text-center border-0 shadow-lg">
+              <Card className="text-center border-0 shadow-lg bg-[#232628] text-white">
                 <CardContent className="p-4 sm:p-6">
-                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-[#78c0c5]" />
                   <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-semibold">Building Management</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-[#bababa]">
                     Manage multiple buildings with detailed pricing and changes
                   </p>
                 </CardContent>
               </Card>
-              <Card className="text-center border-0 shadow-lg">
+              <Card className="text-center border-0 shadow-lg bg-[#232628] text-white">
                 <CardContent className="p-4 sm:p-6">
-                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-accent" />
+                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-[#43a047]" />
                   <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-semibold">Flat Tracking</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-[#bababa]">
                     Track files with booking tools for specifications
                   </p>
                 </CardContent>
               </Card>
-              <Card className="text-center border-0 shadow-lg">
+              <Card className="text-center border-0 shadow-lg bg-[#232628] text-white">
                 <CardContent className="p-4 sm:p-6">
-                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
+                  <Building2 className="mx-auto mb-3 sm:mb-4 h-8 w-8 sm:h-10 sm:w-10 text-[#78c0c5]" />
                   <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-semibold">Quote Generation</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-[#bababa]">
                     Generate professional quotes with Excel export
                   </p>
                 </CardContent>
@@ -115,14 +108,14 @@ const Index = () => {
         <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 from-primary/5 via-background to-accent/5">
           <div className="w-full max-w-md mx-auto">
             <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-              <p className="text-muted-foreground text-sm sm:text-base">Sign in to your account</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Welcome Back</h2>
+              <p className="text-[#bababa] text-sm sm:text-base">Sign in to your account</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               <div className="space-y-2 sm:space-y-3">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email Address
+                <Label htmlFor="email" className="text-sm font-medium text-[#bababa]">
+                    Email Address
                 </Label>
                 <Input
                   id="email"
@@ -131,14 +124,14 @@ const Index = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-10 sm:h-12 text-base"
+                    className="h-10 sm:h-12 text-base placeholder:text-[#bababa] bg-[#232628] border-[#4e4e4e] text-white"
                 />
               </div>
 
               <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                    Password
+                  <Label htmlFor="password" className="text-sm font-medium text-[#bababa]">
+                      Password
                   </Label>
                 </div>
                 <Input
@@ -148,7 +141,7 @@ const Index = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-10 sm:h-12 text-base"
+                    className="h-10 sm:h-12 text-base placeholder:text-[#bababa] bg-[#232628] border-[#4e4e4e] text-white"
                 />
               </div>
 

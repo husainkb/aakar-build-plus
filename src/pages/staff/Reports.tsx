@@ -183,7 +183,7 @@ export default function StaffReports() {
 
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text('Aakar Construction - Flats Report', 14, 15);
+    doc.text('Flats Report', 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
 

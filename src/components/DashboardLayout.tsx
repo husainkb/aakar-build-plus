@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -82,6 +82,40 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     </nav>
   );
 
+
+  // Theme toggle logic with localStorage persistence
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark' || stored === 'light') {
+        if (stored === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+        return stored;
+      }
+      // Default to dark
+      document.documentElement.classList.add('dark');
+      return 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      return next;
+    });
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Mobile/Tablet: Sheet Drawer */}
@@ -118,10 +152,17 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Main content */}
       <main className="flex-1 lg:pl-64 min-h-screen">
         <div className="sticky top-0 z-40 border-b bg-card shadow-sm">
-          <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8 justify-between">
             <h2 className="text-base sm:text-lg font-semibold capitalize text-card-foreground">
               {userRole} Dashboard
             </h2>
+            <button
+              onClick={toggleTheme}
+              className="rounded px-3 py-1 text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+            </button>
           </div>
         </div>
         <div className="py-4 sm:p-6 lg:p-8">{children}</div>

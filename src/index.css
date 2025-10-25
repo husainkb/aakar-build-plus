@@ -1,3 +1,9 @@
+@layer base {
+  .dark ::placeholder {
+    color: #d1d5db !important; /* Tailwind gray-300 */
+    opacity: 1;
+  }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,8 +14,8 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 7% 10%; /* #18191B */
-    --foreground: 0 0% 100%; /* #ffffff */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -32,19 +38,19 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 30%; /* #4e4e4e */
+    --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 221 83% 53%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 4% 14%; /* #232628 */
-    --sidebar-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217 33% 17%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 0 0% 30%; /* #4e4e4e */
+    --sidebar-border: 217 33% 17%;
     --sidebar-ring: 221 83% 53%;
 
     --success: 142 76% 36%;
@@ -59,7 +65,7 @@ All colors MUST be HSL.
     --background: 220 7% 10%; /* #18191B */
     --foreground: 0 0% 100%; /* #ffffff */
 
-    --card: 217 33% 17%;
+  --card: 220 4% 14%;
     --card-foreground: 210 40% 98%;
 
     --popover: 217 33% 17%;
@@ -100,12 +106,7 @@ All colors MUST be HSL.
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
   }
-  h1, h2, h3, h4, h5, h6 {
-    color: #ffffff !important;
-  }
-  p, .subtitle, .subheading, h6.subtitle, h5.subtitle, h4.subtitle, h3.subtitle, h2.subtitle, h1.subtitle {
-    color: #bababa !important;
-  }
+  /* Remove forced heading and subtitle colors in dark mode to allow Tailwind theme classes to work */
 }
 
 @layer base {
@@ -125,13 +126,16 @@ All colors MUST be HSL.
   .btn-cta {
     border: 1px solid #4e4e4e !important;
   }
-  .card,
-  .bg-card,
-  .bg-surface {
-    background-color: #232628 !important;
-    color: #ffffff !important;
-  }
+  /* Remove forced card background and text color so Tailwind's bg-card/text-card-foreground work for theme toggle */
   .table-row-hover:hover, tr:hover {
-    background-color: #5a5a5a !important;
+    background-color: hsl(var(--muted) / 0.5) !important;
   }
+  .dark .table-row-hover:hover, .dark tr:hover {
+    background-color: hsl(var(--muted) / 0.7) !important;
+  }
+}
+
+
+.home {
+    background-color: #18191B !important;
 }

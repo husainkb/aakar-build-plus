@@ -183,7 +183,7 @@ export default function AdminReports() {
 
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text('Aakar Construction - Flats Report', 14, 15);
+    doc.text('Flats Report', 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
 
@@ -222,7 +222,7 @@ export default function AdminReports() {
           </div>
         </div>
 
-        <Card>
+        <Card className="bg-card text-card-foreground">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
@@ -354,9 +354,35 @@ export default function AdminReports() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card text-card-foreground">
           <CardHeader>
-            <CardTitle>Flats ({filteredFlats.length})</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Flats ({filteredFlats.length})</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (filteredFlats.length === 0) return;
+                  const headers = [
+                    'Building', 'Wing', 'Flat No', 'Floor', 'Type', 'Sq.Ft', 'Status'
+                  ];
+                  const rows = filteredFlats.map(f => [
+                    f.building_name,
+                    f.wing,
+                    f.flat_no,
+                    f.floor,
+                    f.type,
+                    f.square_foot,
+                    f.booked_status
+                  ]);
+                  const tsv = [headers, ...rows].map(r => r.join('\t')).join('\n');
+                  navigator.clipboard.writeText(tsv);
+                  toast({ title: 'Table copied to clipboard!' });
+                }}
+              >
+                Copy Table
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

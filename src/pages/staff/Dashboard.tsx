@@ -53,7 +53,7 @@ export default function StaffDashboard() {
           </div>
         </div>
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-          <Card className="w-full">
+          <Card className="w-full bg-card text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Buildings</CardTitle>
               <Building className="h-4 w-4 text-primary" />
@@ -62,16 +62,16 @@ export default function StaffDashboard() {
               <div className="text-2xl font-bold">{stats.totalBuildings}</div>
             </CardContent>
           </Card>
-          <Card className="w-full">
+          <Card className="w-full bg-card text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Flats</CardTitle>
-              <Home className="h-4 w-4 text-blue-600" />
+              <Home className="h-4 w-4 text-secondary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalFlats}</div>
             </CardContent>
           </Card>
-          <Card className="w-full">
+          <Card className="w-full bg-card text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Available Flats</CardTitle>
               <FileText className="h-4 w-4 text-accent" />
@@ -81,7 +81,7 @@ export default function StaffDashboard() {
             </CardContent>
           </Card>
         </div>
-        <Card className="w-full">
+  <Card className="w-full bg-card text-card-foreground">
           <CardHeader>
             <CardTitle>Generate Quote</CardTitle>
           </CardHeader>

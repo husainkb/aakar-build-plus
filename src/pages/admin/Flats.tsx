@@ -226,33 +226,22 @@ export default function Flats() {
     }
   };
 
-  const handleDuplicate = async (flat: Flat) => {
-    const { data, error } = await supabase
-      .from('flats')
-      .insert([{
-        building_id: flat.building_id,
-        flat_no: flat.flat_no,
-        wing: `${flat.wing} (copy)`,
-        floor: flat.floor,
-        square_foot: flat.square_foot,
-        type: flat.type,
-        booked_status: flat.booked_status,
-        flat_experience: flat.flat_experience,
-        terrace_area: flat.terrace_area,
-      }])
-      .select('*, buildings(name)')
-      .single();
-
-    if (error) {
-      toast.error('Failed to duplicate flat');
-    } else {
-      toast.success('Flat duplicated successfully');
-      fetchFlats();
-      // Auto-open edit modal with duplicated flat
-      if (data) {
-        handleEdit(data);
-      }
-    }
+  const handleDuplicate = (flat: Flat) => {
+    // Prepare duplicated data for the form, but do not save to DB
+    setEditingFlat(null); // treat as new
+    setFormData({
+      building_id: flat.building_id,
+      flat_no: flat.flat_no.toString(),
+      wing: `${flat.wing} (copy)`,
+      floor: flat.floor.toString(),
+      square_foot: flat.square_foot.toString(),
+      type: flat.type,
+      booked_status: flat.booked_status,
+      flat_experience: flat.flat_experience || 'Good',
+      terrace_area: flat.terrace_area?.toString() || '0',
+    });
+    setErrors({});
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -296,10 +285,10 @@ export default function Flats() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="building">Building *</Label>
+                    <Label htmlFor="building" className="text-muted-foreground">Building *</Label>
                     <Select value={formData.building_id} onValueChange={(value) => setFormData({ ...formData, building_id: value })}>
                       <SelectTrigger className={errors.building_id ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select building" />
+                        <SelectValue placeholder="Select building" className="placeholder:text-muted-foreground" />
                       </SelectTrigger>
                       <SelectContent>
                         {buildings.map((building) => (
@@ -312,7 +301,7 @@ export default function Flats() {
                     {errors.building_id && <p className="text-xs text-destructive">{errors.building_id}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="flat_no">Flat No *</Label>
+                    <Label htmlFor="flat_no" className="text-muted-foreground">Flat No *</Label>
                     <Input
                       id="flat_no"
                       type="number"
@@ -325,7 +314,7 @@ export default function Flats() {
                     {errors.flat_no && <p className="text-xs text-destructive">{errors.flat_no}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="wing">Wing *</Label>
+                    <Label htmlFor="wing" className="text-muted-foreground">Wing *</Label>
                     <Input
                       id="wing"
                       value={formData.wing}
@@ -336,7 +325,7 @@ export default function Flats() {
                     {errors.wing && <p className="text-xs text-destructive">{errors.wing}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="floor">Floor *</Label>
+                    <Label htmlFor="floor" className="text-muted-foreground">Floor *</Label>
                     <Input
                       id="floor"
                       type="number"
@@ -349,7 +338,7 @@ export default function Flats() {
                     {errors.floor && <p className="text-xs text-destructive">{errors.floor}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="square_foot">Square Foot *</Label>
+                    <Label htmlFor="square_foot" className="text-muted-foreground">Square Foot *</Label>
                     <Input
                       id="square_foot"
                       type="number"
@@ -363,7 +352,7 @@ export default function Flats() {
                     {errors.square_foot && <p className="text-xs text-destructive">{errors.square_foot}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="terrace_area">Terrace Area</Label>
+                    <Label htmlFor="terrace_area" className="text-muted-foreground">Terrace Area</Label>
                     <Input
                       id="terrace_area"
                       type="number"
@@ -374,19 +363,19 @@ export default function Flats() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="type">Type * (e.g., 1BHK, 2BHK)</Label>
+                    <Label htmlFor="type" className="text-muted-foreground">Type * (e.g., 1BHK, 2BHK)</Label>
                     <Input
                       id="type"
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className={errors.type ? 'border-destructive' : ''}
+                      className={(errors.type ? 'border-destructive ' : '') + 'placeholder:text-muted-foreground'}
                       placeholder="e.g., 2BHK, 3BHK"
                       required
                     />
                     {errors.type && <p className="text-xs text-destructive">{errors.type}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="booked_status">Booked Status *</Label>
+                    <Label htmlFor="booked_status" className="text-muted-foreground">Booked Status *</Label>
                     <Select value={formData.booked_status} onValueChange={(value) => setFormData({ ...formData, booked_status: value })}>
                       <SelectTrigger className={errors.booked_status ? 'border-destructive' : ''}>
                         <SelectValue />
@@ -399,7 +388,7 @@ export default function Flats() {
                     {errors.booked_status && <p className="text-xs text-destructive">{errors.booked_status}</p>}
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="flat_experience">Flat Experience *</Label>
+                    <Label htmlFor="flat_experience" className="text-muted-foreground">Flat Experience *</Label>
                     <Select value={formData.flat_experience} onValueChange={(value) => setFormData({ ...formData, flat_experience: value })}>
                       <SelectTrigger className={errors.flat_experience ? 'border-destructive' : ''}>
                         <SelectValue />
@@ -429,13 +418,13 @@ export default function Flats() {
               placeholder="Search by flat no, wing, or building..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 placeholder:text-muted-foreground"
             />
           </div>
         )}
 
         {buildings.length === 0 && (
-          <Card>
+          <Card className="bg-card text-card-foreground">
             <CardContent className="p-6 text-center">
               <p className="text-muted-foreground">
                 Please create at least one building before adding flats.
@@ -445,7 +434,7 @@ export default function Flats() {
         )}
 
         {buildings.length > 0 && (
-          <Card>
+          <Card className="bg-card text-card-foreground">
             <CardHeader>
               <CardTitle>All Flats ({filteredFlats.length})</CardTitle>
             </CardHeader>

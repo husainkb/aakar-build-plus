@@ -43,10 +43,10 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { title: 'Total Buildings', value: stats.totalBuildings, icon: Building, color: 'text-primary' },
-    { title: 'Total Flats', value: stats.totalFlats, icon: Home, color: 'text-blue-600' },
-    { title: 'Booked Flats', value: stats.bookedFlats, icon: TrendingUp, color: 'text-accent' },
-    { title: 'Available Flats', value: stats.availableFlats, icon: Users, color: 'text-orange-600' },
+  { title: 'Total Buildings', value: stats.totalBuildings, icon: Building, color: 'text-primary' },
+  { title: 'Total Flats', value: stats.totalFlats, icon: Home, color: 'text-secondary' },
+  { title: 'Booked Flats', value: stats.bookedFlats, icon: TrendingUp, color: 'text-accent' },
+  { title: 'Available Flats', value: stats.availableFlats, icon: Users, color: 'text-warning' },
   ];
 
   return (

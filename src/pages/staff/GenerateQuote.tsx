@@ -498,7 +498,7 @@ export default function GenerateQuote() {
     const pdfFile = new File([pdfBlob], `AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
 
     // Prepare message
-    const message = `Aakar Construction Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
+    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
 
     // Mobile: Use Web Share API to share PDF directly to WhatsApp
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -542,7 +542,7 @@ export default function GenerateQuote() {
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('AAKAR CONSTRUCTION', 105, currentY, { align: 'center' });
+    doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 10;
     
     doc.setFontSize(14);
@@ -684,16 +684,16 @@ export default function GenerateQuote() {
 
     // Get PDF as Blob
     const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], `AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
+    const pdfFile = new File([pdfBlob], `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
 
     // Prepare message
-    const message = `Aakar Construction Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
+    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
 
     // Mobile: Use Web Share API to share PDF directly to email app
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
-          title: 'Aakar Construction Quote',
+          title: 'Quote',
           text: message,
           files: [pdfFile]
         });
@@ -705,7 +705,7 @@ export default function GenerateQuote() {
     }
 
     // Desktop: Open mailto link and instruct user to attach PDF manually
-    const mailtoUrl = `mailto:?subject=Aakar Construction Quote&body=${encodeURIComponent(message + '')}`;
+    const mailtoUrl = `mailto:?subject=Quote&body=${encodeURIComponent(message + '')}`;
     window.location.href = mailtoUrl;
     toast.info('Email clients do not support direct PDF sharing. Please attach the downloaded PDF manually.');
   };
@@ -717,45 +717,45 @@ export default function GenerateQuote() {
     <DashboardLayout>
       <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Generate Quote</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Generate Quote</h1>
           <p className="text-muted-foreground">Create professional quotations for customers.</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Property</CardTitle>
+        <Card className="bg-card text-card-foreground">
+          <CardHeader className="bg-card text-card-foreground">
+            <CardTitle className="text-xl font-semibold text-card-foreground">Select Property</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 bg-card text-card-foreground">
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
-                <Label>Building</Label>
+                <Label className="text-muted-foreground">Building</Label>
                 <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select building" />
+                  <SelectTrigger className="bg-background text-foreground">
+                    <SelectValue placeholder="Select building" className="placeholder:text-muted-foreground" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-popover text-popover-foreground">
                     {buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Wing</Label>
+                <Label className="text-muted-foreground">Wing</Label>
                 <Select value={selectedWing} onValueChange={setSelectedWing} disabled={!selectedBuilding}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select wing" />
+                  <SelectTrigger className="bg-background text-foreground">
+                    <SelectValue placeholder="Select wing" className="placeholder:text-muted-foreground" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-popover text-popover-foreground">
                     {wings.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Flat</Label>
+                <Label className="text-muted-foreground">Flat</Label>
                 <Select value={selectedFlat} onValueChange={setSelectedFlat} disabled={!selectedBuilding}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select flat" />
+                  <SelectTrigger className="bg-background text-foreground">
+                    <SelectValue placeholder="Select flat" className="placeholder:text-muted-foreground" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-popover text-popover-foreground">
                     {filteredFlats.map(f => <SelectItem key={f.id} value={f.id}>Flat {f.flat_no}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -766,18 +766,18 @@ export default function GenerateQuote() {
         </Card>
 
         {quoteData && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Quote Preview</CardTitle>
+          <Card className="bg-card text-card-foreground">
+            <CardHeader className="bg-card text-card-foreground">
+              <CardTitle className="text-xl font-semibold text-card-foreground">Quote Preview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card text-card-foreground">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                <div><strong>Building:</strong> {quoteData.building}</div>
-                <div><strong>Flat No:</strong> {quoteData.flatNo} ({quoteData.wing})</div>
-                <div><strong>Square Foot:</strong> {quoteData.superBuiltUp}</div>
-                <div><strong>Agreement Amount:</strong> {formatINR(quoteData.agreementAmount)}</div>
-                <div><strong>Loan Amount (95%):</strong> {formatINR(quoteData.loanAmount)}</div>
-                <div><strong>Grand Total:</strong> {formatINR(quoteData.grandTotal)}</div>
+                <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
+                <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo} ({quoteData.wing})</div>
+                <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
+                <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
+                <div className="text-foreground"><span className="font-semibold">Loan Amount (95%):</span> {formatINR(quoteData.loanAmount)}</div>
+                <div className="text-foreground"><span className="font-semibold">Grand Total:</span> {formatINR(quoteData.grandTotal)}</div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button onClick={handleDownloadPDF} className="w-full sm:w-auto">

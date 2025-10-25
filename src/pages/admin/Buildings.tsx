@@ -213,33 +213,22 @@ export default function Buildings() {
     }
   };
 
-  const handleDuplicate = async (building: Building) => {
-    const { data, error } = await supabase
-      .from('buildings')
-      .insert([{
-        name: `${building.name} (copy)`,
-        rate_per_sqft: building.rate_per_sqft,
-        maintenance: building.maintenance,
-        electrical_water_charges: building.electrical_water_charges,
-        registration_charges: building.registration_charges,
-        gst_tax: building.gst_tax,
-        stamp_duty: building.stamp_duty,
-        legal_charges: building.legal_charges,
-        other_charges: building.other_charges,
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      toast.error('Failed to duplicate building');
-    } else {
-      toast.success('Building duplicated successfully');
-      fetchBuildings();
-      // Auto-open edit modal with duplicated building
-      if (data) {
-        handleEdit(data);
-      }
-    }
+  const handleDuplicate = (building: Building) => {
+    // Prepare duplicated data for the form, but do not save to DB
+    setEditingBuilding(null); // treat as new
+    setFormData({
+      name: `${building.name} (copy)`,
+      rate_per_sqft: building.rate_per_sqft.toString(),
+      maintenance: building.maintenance.toString(),
+      electrical_water_charges: building.electrical_water_charges.toString(),
+      registration_charges: building.registration_charges.toString(),
+      gst_tax: building.gst_tax.toString(),
+      stamp_duty: building.stamp_duty.toString(),
+      legal_charges: building.legal_charges.toString(),
+      other_charges: building.other_charges.toString(),
+    });
+    setErrors({});
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -283,7 +272,7 @@ export default function Buildings() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="name">Building Name *</Label>
+                    <Label htmlFor="name" className="text-muted-foreground">Building Name *</Label>
                     <Input
                       id="name"
                       value={formData.name}
@@ -294,7 +283,7 @@ export default function Buildings() {
                     {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rate_per_sqft">Rate per Sqft * (₹)</Label>
+                    <Label htmlFor="rate_per_sqft" className="text-muted-foreground">Rate per Sqft * (₹)</Label>
                     <Input
                       id="rate_per_sqft"
                       type="number"
@@ -308,7 +297,7 @@ export default function Buildings() {
                     {errors.rate_per_sqft && <p className="text-xs text-destructive">{errors.rate_per_sqft}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maintenance">Maintenance * (₹)</Label>
+                    <Label htmlFor="maintenance" className="text-muted-foreground">Maintenance * (₹)</Label>
                     <Input
                       id="maintenance"
                       type="number"
@@ -322,7 +311,7 @@ export default function Buildings() {
                     {errors.maintenance && <p className="text-xs text-destructive">{errors.maintenance}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="electrical_water_charges">Electrical & Water Charges * (₹)</Label>
+                    <Label htmlFor="electrical_water_charges" className="text-muted-foreground">Electrical & Water Charges * (₹)</Label>
                     <Input
                       id="electrical_water_charges"
                       type="number"
@@ -336,7 +325,7 @@ export default function Buildings() {
                     {errors.electrical_water_charges && <p className="text-xs text-destructive">{errors.electrical_water_charges}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="registration_charges">Registration Charges * (%)</Label>
+                    <Label htmlFor="registration_charges" className="text-muted-foreground">Registration Charges * (%)</Label>
                     <Input
                       id="registration_charges"
                       type="number"
@@ -351,7 +340,7 @@ export default function Buildings() {
                     {errors.registration_charges && <p className="text-xs text-destructive">{errors.registration_charges}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gst_tax">GST/S Tax * (%)</Label>
+                    <Label htmlFor="gst_tax" className="text-muted-foreground">GST/S Tax * (%)</Label>
                     <Input
                       id="gst_tax"
                       type="number"
@@ -366,7 +355,7 @@ export default function Buildings() {
                     {errors.gst_tax && <p className="text-xs text-destructive">{errors.gst_tax}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="stamp_duty">Stamp Duty * (%)</Label>
+                    <Label htmlFor="stamp_duty" className="text-muted-foreground">Stamp Duty * (%)</Label>
                     <Input
                       id="stamp_duty"
                       type="number"
@@ -381,7 +370,7 @@ export default function Buildings() {
                     {errors.stamp_duty && <p className="text-xs text-destructive">{errors.stamp_duty}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="legal_charges">Legal Charges * (₹)</Label>
+                    <Label htmlFor="legal_charges" className="text-muted-foreground">Legal Charges * (₹)</Label>
                     <Input
                       id="legal_charges"
                       type="number"
@@ -395,7 +384,7 @@ export default function Buildings() {
                     {errors.legal_charges && <p className="text-xs text-destructive">{errors.legal_charges}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="other_charges">Other Charges * (₹)</Label>
+                    <Label htmlFor="other_charges" className="text-muted-foreground">Other Charges * (₹)</Label>
                     <Input
                       id="other_charges"
                       type="number"
@@ -428,7 +417,7 @@ export default function Buildings() {
           />
         </div>
 
-        <Card>
+        <Card className="bg-card text-card-foreground">
           <CardHeader>
             <CardTitle>All Buildings ({filteredBuildings.length})</CardTitle>
           </CardHeader>
