@@ -89,7 +89,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
             <Button 
-              className="fixed top-4 left-4 z-50 shadow-lg" 
+              className="fixed top-4 right-8 z-50 shadow-lg" 
               variant="outline" 
               size="icon"
             >
@@ -124,7 +124,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </h2>
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="py-4 sm:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

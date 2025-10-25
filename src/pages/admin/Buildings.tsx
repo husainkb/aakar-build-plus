@@ -260,7 +260,7 @@ export default function Buildings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16 max-w-screen-xl mx-auto w-full">
+      <div className="space-y-6 px-2 sm:px-4 md:px-8 lg:px-10 xl:px-16 max-w-screen-xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Buildings</h1>
@@ -276,12 +276,12 @@ export default function Buildings() {
                 Add Building
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingBuilding ? 'Edit Building' : 'Add New Building'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="name">Building Name *</Label>
                     <Input
@@ -418,7 +418,7 @@ export default function Buildings() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative max-w-md">
+        <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search buildings by name..."
@@ -432,21 +432,21 @@ export default function Buildings() {
           <CardHeader>
             <CardTitle>All Buildings ({filteredBuildings.length})</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto p-0">
-            <div className="min-w-[400px] w-full">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto w-full">
               <Table className="w-full text-sm">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[150px]">Name</TableHead>
-                    <TableHead className="min-w-[120px]">Rate/Sqft</TableHead>
-                    <TableHead className="min-w-[120px]">Maintenance</TableHead>
-                    <TableHead className="min-w-[120px]">Actions</TableHead>
+                    <TableHead className="min-w-[90px]">Name</TableHead>
+                    <TableHead className="min-w-[90px]">Rate/Sqft</TableHead>
+                    <TableHead className="min-w-[90px]">Maintenance</TableHead>
+                    <TableHead className="min-w-[90px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredBuildings.map((building) => (
                     <TableRow key={building.id} className="hover:bg-muted transition-colors">
-                      <TableCell className="font-medium break-words max-w-[180px]">{building.name}</TableCell>
+                      <TableCell className="font-medium break-words max-w-[120px]">{building.name}</TableCell>
                       <TableCell>₹{building.rate_per_sqft.toFixed(2)}</TableCell>
                       <TableCell>₹{building.maintenance.toFixed(2)}</TableCell>
                       <TableCell>
