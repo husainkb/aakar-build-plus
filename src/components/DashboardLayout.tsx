@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut } from 'lucide-react';
+import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from '@/components/ui/drawer';
 import { useState } from 'react';
@@ -25,11 +25,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/buildings', label: 'Buildings', icon: Building },
     { href: '/admin/flats', label: 'Flats', icon: Home },
+    { href: '/admin/reports', label: 'Reports', icon: FileBarChart },
   ];
 
   const staffLinks = [
     { href: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/staff/generate-quote', label: 'Generate Quote', icon: FileText },
+    { href: '/staff/reports', label: 'Reports', icon: FileBarChart },
   ];
 
   const links = userRole === 'admin' ? adminLinks : staffLinks;
@@ -125,15 +127,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </nav>
       </aside>
       {/* Main content */}
-      <main className="flex-1">
+      <main className="flex-1 lg:ml-0">
         <div className="border-b bg-card">
-          <div className="flex h-16 items-center px-8">
-            <h2 className="text-lg font-semibold capitalize">
+          <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
+            <h2 className="text-base sm:text-lg font-semibold capitalize">
               {userRole} Dashboard
             </h2>
           </div>
         </div>
-        <div className="p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

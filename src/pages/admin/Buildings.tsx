@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Building {
@@ -25,6 +25,8 @@ interface Building {
 
 export default function Buildings() {
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [filteredBuildings, setFilteredBuildings] = useState<Building[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
@@ -45,6 +47,17 @@ export default function Buildings() {
     fetchBuildings();
   }, []);
 
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredBuildings(buildings);
+    } else {
+      const filtered = buildings.filter(b =>
+        b.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredBuildings(filtered);
+    }
+  }, [searchTerm, buildings]);
+
   const fetchBuildings = async () => {
     const { data, error } = await supabase
       .from('buildings')
@@ -55,6 +68,7 @@ export default function Buildings() {
       toast.error('Failed to fetch buildings');
     } else {
       setBuildings(data || []);
+      setFilteredBuildings(data || []);
     }
   };
 
@@ -403,9 +417,20 @@ export default function Buildings() {
           </Dialog>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search buildings by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>All Buildings</CardTitle>
+            <CardTitle>All Buildings ({filteredBuildings.length})</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <div className="min-w-[400px] w-full">
@@ -419,7 +444,7 @@ export default function Buildings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {buildings.map((building) => (
+                  {filteredBuildings.map((building) => (
                     <TableRow key={building.id} className="hover:bg-muted transition-colors">
                       <TableCell className="font-medium break-words max-w-[180px]">{building.name}</TableCell>
                       <TableCell>₹{building.rate_per_sqft.toFixed(2)}</TableCell>

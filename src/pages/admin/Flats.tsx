@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Building {
@@ -33,6 +33,8 @@ interface Flat {
 
 export default function Flats() {
   const [flats, setFlats] = useState<Flat[]>([]);
+  const [filteredFlats, setFilteredFlats] = useState<Flat[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,6 +56,19 @@ export default function Flats() {
     fetchBuildings();
     fetchFlats();
   }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredFlats(flats);
+    } else {
+      const filtered = flats.filter(f =>
+        f.flat_no.toString().includes(searchTerm) ||
+        f.wing.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.buildings?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredFlats(filtered);
+    }
+  }, [searchTerm, flats]);
 
   const fetchBuildings = async () => {
     const { data, error } = await supabase
@@ -78,6 +93,7 @@ export default function Flats() {
       toast.error('Failed to fetch flats');
     } else {
       setFlats(data || []);
+      setFilteredFlats(data || []);
     }
   };
 
@@ -405,6 +421,19 @@ export default function Flats() {
           </Dialog>
         </div>
 
+        {/* Search Bar */}
+        {buildings.length > 0 && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by flat no, wing, or building..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+
         {buildings.length === 0 && (
           <Card>
             <CardContent className="p-6 text-center">
@@ -418,7 +447,7 @@ export default function Flats() {
         {buildings.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>All Flats</CardTitle>
+              <CardTitle>All Flats ({filteredFlats.length})</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table className="min-w-full w-full overflow-x-auto">
@@ -435,7 +464,7 @@ export default function Flats() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {flats.map((flat) => (
+                  {filteredFlats.map((flat) => (
                     <TableRow key={flat.id} className="flex flex-wrap md:table-row">
                       <TableCell>{flat.buildings?.name}</TableCell>
                       <TableCell className="font-medium">{flat.flat_no}</TableCell>

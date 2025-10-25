@@ -10,8 +10,10 @@ import Login from "./pages/auth/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Buildings from "./pages/admin/Buildings";
 import Flats from "./pages/admin/Flats";
+import AdminReports from "./pages/admin/Reports";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
+import StaffReports from "./pages/staff/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,8 +31,10 @@ const App = () => (
             <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
             <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />
             <Route path="/staff/generate-quote" element={<ProtectedRoute requiredRole="staff"><GenerateQuote /></ProtectedRoute>} />
+            <Route path="/staff/reports" element={<ProtectedRoute requiredRole="staff"><StaffReports /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
