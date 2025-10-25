@@ -10,6 +10,7 @@ interface AuthContextType {
   userRole: 'admin' | 'staff' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -71,7 +72,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -80,6 +80,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (!error) {
       toast.success('Signed in successfully!');
+    }
+    
+    return { error };
+  };
+
+  const signUp = async (email: string, password: string, name: string, role: 'admin' | 'staff') => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          role
+        }
+      }
+    });
+    
+    if (!error) {
+      toast.success('Account created successfully! Please check your email for verification.');
     }
     
     return { error };
@@ -94,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, userRole, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, userRole, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

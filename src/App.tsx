@@ -15,6 +15,7 @@ import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
 import StaffReports from "./pages/staff/Reports";
 import NotFound from "./pages/NotFound";
+import Signup from "./pages/auth/Signup";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +28,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-          <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/signup" element={<Signup />} />
             <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
             <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
