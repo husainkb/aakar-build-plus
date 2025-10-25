@@ -71,9 +71,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <Button
         variant="ghost"
         className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50 mt-4"
-        onClick={() => { 
-          setDrawerOpen(false); 
-          handleSignOut(); 
+        onClick={() => {
+          setDrawerOpen(false);
+          handleSignOut();
         }}
       >
         <LogOut className="mr-3 h-4 w-4" />
@@ -83,7 +83,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   );
 
 
-  // Theme toggle logic with localStorage persistence
+  // Theme toggle logic with localStorage persistence (default: light)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('theme');
@@ -92,11 +92,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         else document.documentElement.classList.remove('dark');
         return stored;
       }
-      // Default to dark
-      document.documentElement.classList.add('dark');
-      return 'dark';
+      // Default to light mode
+      document.documentElement.classList.remove('dark');
+      return 'light';
     }
-    return 'dark';
+    return 'light';
   });
 
   useEffect(() => {
@@ -122,9 +122,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="lg:hidden">
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
-            <Button 
-              className="fixed top-4 right-8 z-50 shadow-lg" 
-              variant="outline" 
+            <Button
+              className="fixed top-4 right-8 z-50 shadow-lg"
+              variant="outline"
               size="icon"
             >
               <Menu className="h-5 w-5" />
