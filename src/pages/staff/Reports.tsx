@@ -78,14 +78,14 @@ export default function StaffReports() {
       `);
 
     if (buildingsData) setBuildings(buildingsData);
-    
+
     if (flatsData) {
       const formattedFlats = flatsData.map((flat: any) => ({
         ...flat,
         building_name: flat.buildings?.name || 'Unknown'
       }));
       setFlats(formattedFlats);
-      
+
       // Extract unique wings
       const uniqueWings = [...new Set(formattedFlats.map((f: Flat) => f.wing))];
       setWings(uniqueWings.sort());
@@ -97,12 +97,12 @@ export default function StaffReports() {
 
     // Search filters
     if (searchBuilding) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.building_name.toLowerCase().includes(searchBuilding.toLowerCase())
       );
     }
     if (searchFlat) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.flat_no.toString().includes(searchFlat)
       );
     }
@@ -133,7 +133,7 @@ export default function StaffReports() {
 
   const exportToExcel = (scope: 'all' | 'building' | 'wing') => {
     let dataToExport = [...filteredFlats];
-    
+
     if (scope === 'building' && filterBuilding !== 'all') {
       dataToExport = dataToExport.filter(f => f.building_id === filterBuilding);
     } else if (scope === 'wing' && filterWing !== 'all') {
@@ -169,7 +169,7 @@ export default function StaffReports() {
 
   const exportToPDF = (scope: 'all' | 'building' | 'wing') => {
     let dataToExport = [...filteredFlats];
-    
+
     if (scope === 'building' && filterBuilding !== 'all') {
       dataToExport = dataToExport.filter(f => f.building_id === filterBuilding);
     } else if (scope === 'wing' && filterWing !== 'all') {
@@ -228,6 +228,33 @@ export default function StaffReports() {
               <Filter className="h-5 w-5" />
               Search & Filters
             </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Flats ({filteredFlats.length})</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (filteredFlats.length === 0) return;
+                  const headers = [
+                    'Building', 'Wing', 'Flat No', 'Floor', 'Type', 'Sq.Ft', 'Status'
+                  ];
+                  const rows = filteredFlats.map(f => [
+                    f.building_name,
+                    f.wing,
+                    f.flat_no,
+                    f.floor,
+                    f.type,
+                    f.square_foot,
+                    f.booked_status
+                  ]);
+                  const tsv = [headers, ...rows].map(r => r.join('\t')).join('\n');
+                  navigator.clipboard.writeText(tsv);
+                  toast({ title: 'Table copied to clipboard!' });
+                }}
+              >
+                Copy Table
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Search inputs */}
@@ -374,8 +401,8 @@ export default function StaffReports() {
                 </TableHeader>
                 <TableBody>
                   {filteredFlats.map(flat => (
-                    <TableRow 
-                      key={flat.id} 
+                    <TableRow
+                      key={flat.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => openFlatDetail(flat)}
                     >
@@ -386,11 +413,10 @@ export default function StaffReports() {
                       <TableCell className="hidden md:table-cell">{flat.type}</TableCell>
                       <TableCell className="hidden lg:table-cell">{flat.square_foot}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          flat.booked_status.toLowerCase() === 'booked' 
-                            ? 'bg-accent/10 text-accent' 
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${flat.booked_status.toLowerCase() === 'booked'
+                            ? 'bg-accent/10 text-accent'
                             : 'bg-muted text-muted-foreground'
-                        }`}>
+                          }`}>
                           {flat.booked_status}
                         </span>
                       </TableCell>
@@ -443,11 +469,10 @@ export default function StaffReports() {
                 <div>
                   <Label className="text-muted-foreground">Booking Status</Label>
                   <p className="font-medium">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      selectedFlat.booked_status.toLowerCase() === 'booked' 
-                        ? 'bg-accent/10 text-accent' 
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${selectedFlat.booked_status.toLowerCase() === 'booked'
+                        ? 'bg-accent/10 text-accent'
                         : 'bg-muted text-muted-foreground'
-                    }`}>
+                      }`}>
                       {selectedFlat.booked_status}
                     </span>
                   </p>
