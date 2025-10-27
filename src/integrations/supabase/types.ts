@@ -76,7 +76,7 @@ export type Database = {
           terrace_area: number | null
           type: string
           updated_at: string
-          wing: string
+          wing: string | null
         }
         Insert: {
           booked_status: string
@@ -91,7 +91,7 @@ export type Database = {
           terrace_area?: number | null
           type: string
           updated_at?: string
-          wing: string
+          wing?: string | null
         }
         Update: {
           booked_status?: string
@@ -106,7 +106,7 @@ export type Database = {
           terrace_area?: number | null
           type?: string
           updated_at?: string
-          wing?: string
+          wing?: string | null
         }
         Relationships: [
           {

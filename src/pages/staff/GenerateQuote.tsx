@@ -28,7 +28,7 @@ interface Building {
 interface Flat {
   id: string;
   flat_no: number;
-  wing: string;
+  wing: string | null;
   square_foot: number;
   terrace_area: number;
 }
@@ -36,7 +36,7 @@ interface Flat {
 interface QuoteData {
   building: string;
   flatNo: number;
-  wing: string;
+  wing: string | null;
   superBuiltUp: number;
   terraceArea: number;
   totalArea: number;
@@ -72,6 +72,8 @@ export default function GenerateQuote() {
   const [selectedFlat, setSelectedFlat] = useState<string>('');
   const [ratePerSqft, setRatePerSqft] = useState<number>(0);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
+  const [hasWings, setHasWings] = useState<boolean>(false);
+  const [availableWings, setAvailableWings] = useState<string[]>([]);
 
   useEffect(() => {
     fetchBuildings();
@@ -91,6 +93,12 @@ export default function GenerateQuote() {
   const fetchFlats = async (buildingId: string) => {
     const { data } = await supabase.from('flats').select('*').eq('building_id', buildingId);
     setFlats(data || []);
+    
+    // Check if building has wings
+    const wings = data?.map(f => f.wing).filter(w => w) || [];
+    const uniqueWings = [...new Set(wings)].sort();
+    setHasWings(uniqueWings.length > 0);
+    setAvailableWings(uniqueWings);
   };
 
   const handleBuildingChange = (value: string) => {
@@ -109,6 +117,11 @@ export default function GenerateQuote() {
   const handleGenerateQuote = async () => {
     if (!selectedBuilding || !selectedFlat) {
       toast.error('Please select building and flat');
+      return;
+    }
+
+    if (hasWings && !selectedWing) {
+      toast.error('Please select a wing');
       return;
     }
 
@@ -155,7 +168,7 @@ export default function GenerateQuote() {
     setQuoteData({
       building: building.name,
       flatNo: flat.flat_no,
-      wing: flat.wing,
+      wing: flat.wing || '',
       superBuiltUp: flat.square_foot,
       terraceArea: flat.terrace_area || 0,
       totalArea,
@@ -704,7 +717,8 @@ export default function GenerateQuote() {
     const pdfFile = new File([pdfBlob], `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
 
     // Prepare message
-    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
+    const wingText = quoteData.wing ? ` (${quoteData.wing})` : '';
+    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
 
     // Mobile: Use Web Share API to share PDF directly to email app
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -727,8 +741,9 @@ export default function GenerateQuote() {
     toast.info('Email clients do not support direct PDF sharing. Please attach the downloaded PDF manually.');
   };
 
-  const wings = [...new Set(flats.map(f => f.wing))];
-  const filteredFlats = selectedWing ? flats.filter(f => f.wing === selectedWing) : flats;
+  const filteredFlats = hasWings 
+    ? (selectedWing ? flats.filter(f => f.wing === selectedWing) : [])
+    : flats;
 
   return (
     <DashboardLayout>
@@ -767,20 +782,26 @@ export default function GenerateQuote() {
                   className="bg-background text-foreground"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Wing</Label>
-                <Select value={selectedWing} onValueChange={setSelectedWing} disabled={!selectedBuilding}>
-                  <SelectTrigger className="bg-background text-foreground">
-                    <SelectValue placeholder="Select wing" className="placeholder:text-muted-foreground" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    {wings.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {hasWings && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Wing</Label>
+                  <Select value={selectedWing} onValueChange={setSelectedWing} disabled={!selectedBuilding}>
+                    <SelectTrigger className="bg-background text-foreground">
+                      <SelectValue placeholder="Select wing" className="placeholder:text-muted-foreground" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {availableWings.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Flat</Label>
-                <Select value={selectedFlat} onValueChange={setSelectedFlat} disabled={!selectedBuilding}>
+                <Select 
+                  value={selectedFlat} 
+                  onValueChange={setSelectedFlat} 
+                  disabled={!selectedBuilding || (hasWings && !selectedWing)}
+                >
                   <SelectTrigger className="bg-background text-foreground">
                     <SelectValue placeholder="Select flat" className="placeholder:text-muted-foreground" />
                   </SelectTrigger>
@@ -802,7 +823,7 @@ export default function GenerateQuote() {
             <CardContent className="space-y-4 bg-card text-card-foreground">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
-                <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo} ({quoteData.wing})</div>
+                <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo}{quoteData.wing ? ` (${quoteData.wing})` : ''}</div>
                 <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
                 <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
                 <div className="text-foreground"><span className="font-semibold">Loan Amount (95%):</span> {formatINR(quoteData.loanAmount)}</div>

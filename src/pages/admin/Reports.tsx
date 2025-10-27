@@ -23,7 +23,7 @@ interface Flat {
   id: string;
   building_id: string;
   building_name: string;
-  wing: string;
+  wing: string | null;
   flat_no: number;
   floor: number;
   square_foot: number;
@@ -86,8 +86,8 @@ export default function AdminReports() {
       }));
       setFlats(formattedFlats);
       
-      // Extract unique wings
-      const uniqueWings = [...new Set(formattedFlats.map((f: Flat) => f.wing))];
+      // Extract unique wings (filter out nulls)
+      const uniqueWings = [...new Set(formattedFlats.map((f: Flat) => f.wing).filter(w => w))];
       setWings(uniqueWings.sort());
     }
   };
@@ -149,7 +149,7 @@ export default function AdminReports() {
       ['Building', 'Wing', 'Flat No', 'Floor', 'Type', 'Square Foot', 'Terrace Area', 'Status', 'Experience'],
       ...dataToExport.map(f => [
         f.building_name,
-        f.wing,
+        f.wing || 'N/A',
         f.flat_no,
         f.floor,
         f.type,
@@ -192,7 +192,7 @@ export default function AdminReports() {
       head: [['Building', 'Wing', 'Flat No', 'Floor', 'Type', 'Sq.Ft', 'Status']],
       body: dataToExport.map(f => [
         f.building_name,
-        f.wing,
+        f.wing || 'N/A',
         f.flat_no,
         f.floor,
         f.type,
@@ -368,7 +368,7 @@ export default function AdminReports() {
                   ];
                   const rows = filteredFlats.map(f => [
                     f.building_name,
-                    f.wing,
+                    f.wing || 'N/A',
                     f.flat_no,
                     f.floor,
                     f.type,
@@ -406,7 +406,7 @@ export default function AdminReports() {
                       onClick={() => openFlatDetail(flat)}
                     >
                       <TableCell className="font-medium">{flat.building_name}</TableCell>
-                      <TableCell>{flat.wing}</TableCell>
+                      <TableCell>{flat.wing || 'N/A'}</TableCell>
                       <TableCell>{flat.flat_no}</TableCell>
                       <TableCell className="hidden sm:table-cell">{flat.floor}</TableCell>
                       <TableCell className="hidden md:table-cell">{flat.type}</TableCell>

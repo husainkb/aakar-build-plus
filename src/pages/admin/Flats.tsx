@@ -21,7 +21,7 @@ interface Flat {
   id: string;
   building_id: string;
   flat_no: number;
-  wing: string;
+  wing: string | null;
   floor: number;
   square_foot: number;
   type: string;
@@ -63,7 +63,7 @@ export default function Flats() {
     } else {
       const filtered = flats.filter(f =>
         f.flat_no.toString().includes(searchTerm) ||
-        f.wing.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (f.wing && f.wing.toLowerCase().includes(searchTerm.toLowerCase())) ||
         f.buildings?.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredFlats(filtered);
@@ -109,8 +109,9 @@ export default function Flats() {
       newErrors.flat_no = 'Flat No must be greater than 0';
     }
 
-    if (!formData.wing.trim() || formData.wing.length < 1 || formData.wing.length > 50) {
-      newErrors.wing = 'Wing must be between 1 and 50 characters';
+    // Wing is optional, but if provided, must be valid
+    if (formData.wing.trim() && formData.wing.length > 50) {
+      newErrors.wing = 'Wing must be less than 50 characters';
     }
 
     const floor = parseInt(formData.floor);
@@ -152,7 +153,7 @@ export default function Flats() {
     const flatData = {
       building_id: formData.building_id,
       flat_no: parseInt(formData.flat_no),
-      wing: formData.wing.trim(),
+      wing: formData.wing.trim() || null, // Optional: allow null for standalone buildings
       floor: parseInt(formData.floor),
       square_foot: parseFloat(formData.square_foot),
       type: formData.type.trim(),
@@ -198,7 +199,7 @@ export default function Flats() {
     setFormData({
       building_id: flat.building_id,
       flat_no: flat.flat_no.toString(),
-      wing: flat.wing,
+      wing: flat.wing || '',
       floor: flat.floor.toString(),
       square_foot: flat.square_foot.toString(),
       type: flat.type,
@@ -314,13 +315,13 @@ export default function Flats() {
                     {errors.flat_no && <p className="text-xs text-destructive">{errors.flat_no}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="wing" className="text-muted-foreground">Wing *</Label>
+                    <Label htmlFor="wing" className="text-muted-foreground">Wing (Optional)</Label>
                     <Input
                       id="wing"
                       value={formData.wing}
                       onChange={(e) => setFormData({ ...formData, wing: e.target.value })}
                       className={errors.wing ? 'border-destructive' : ''}
-                      required
+                      placeholder="Leave empty for standalone buildings"
                     />
                     {errors.wing && <p className="text-xs text-destructive">{errors.wing}</p>}
                   </div>
