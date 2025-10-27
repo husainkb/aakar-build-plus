@@ -47,9 +47,7 @@ export default function Buildings() {
     legal_charges: '',
     other_charges: '',
   });
-  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([
-    { text: '', value: 0 }
-  ]);
+  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -156,20 +154,8 @@ export default function Buildings() {
       newErrors.other_charges = 'Other Charges must be 0 or greater';
     }
 
-    // Validate payment modes
-    const totalPercentage = paymentModes.reduce((sum, mode) => sum + mode.value, 0);
-    if (totalPercentage !== 100) {
-      newErrors.paymentModes = `Total percentage must be 100%. Current total: ${totalPercentage}%`;
-    }
-
     // Validate individual payment modes
     paymentModes.forEach((mode, index) => {
-      if (!mode.text.trim()) {
-        newErrors[`paymentModeText_${index}`] = 'Payment mode name is required';
-      }
-      if (mode.value <= 0 || mode.value > 100) {
-        newErrors[`paymentModeValue_${index}`] = 'Percentage must be between 1 and 100';
-      }
       if (isNaN(mode.value)) {
         newErrors[`paymentModeValue_${index}`] = 'Percentage must be a valid number';
       }
@@ -245,11 +231,11 @@ export default function Buildings() {
       other_charges: building.other_charges.toString(),
     });
     
-    // Use the building's payment modes if they exist, otherwise start with one empty row
+    // Use the building's payment modes if they exist, otherwise start with empty array
     if (building.payment_modes && building.payment_modes.length > 0) {
       setPaymentModes(building.payment_modes);
     } else {
-      setPaymentModes([{ text: '', value: 0 }]);
+      setPaymentModes([]);
     }
     
     setErrors({});
@@ -289,7 +275,7 @@ export default function Buildings() {
     if (building.payment_modes && building.payment_modes.length > 0) {
       setPaymentModes(building.payment_modes);
     } else {
-      setPaymentModes([{ text: '', value: 0 }]);
+      setPaymentModes([]);
     }
     
     setErrors({});
@@ -308,7 +294,7 @@ export default function Buildings() {
       legal_charges: '',
       other_charges: '',
     });
-    setPaymentModes([{ text: '', value: 0 }]);
+    setPaymentModes([]);
     setEditingBuilding(null);
     setErrors({});
   };
@@ -318,10 +304,8 @@ export default function Buildings() {
   };
 
   const removePaymentMode = (index: number) => {
-    if (paymentModes.length > 1) {
-      const newModes = paymentModes.filter((_, i) => i !== index);
-      setPaymentModes(newModes);
-    }
+    const newModes = paymentModes.filter((_, i) => i !== index);
+    setPaymentModes(newModes);
   };
 
   const updatePaymentMode = (index: number, field: keyof PaymentMode, value: string | number) => {
@@ -496,13 +480,11 @@ export default function Buildings() {
                     <div>
                       <Label className="text-lg font-semibold">Payment Modes</Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Define custom payment schedules. Total must equal 100%.
+                        Define custom payment schedules.
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${
-                        getTotalPercentage() === 100 ? 'text-green-600' : 'text-destructive'
-                      }`}>
+                      <span className="text-sm font-medium text-muted-foreground">
                         Total: {getTotalPercentage()}%
                       </span>
                       <Button type="button" onClick={addPaymentMode} variant="outline" size="sm">
@@ -511,10 +493,6 @@ export default function Buildings() {
                       </Button>
                     </div>
                   </div>
-                  
-                  {errors.paymentModes && (
-                    <p className="text-xs text-destructive font-medium">{errors.paymentModes}</p>
-                  )}
 
                   <div className="space-y-3 max-h-60 overflow-y-auto p-1">
                     {paymentModes.map((mode, index) => (
@@ -528,11 +506,7 @@ export default function Buildings() {
                             placeholder="e.g., Booking Amount, On Possession, etc."
                             value={mode.text}
                             onChange={(e) => updatePaymentMode(index, 'text', e.target.value)}
-                            className={errors[`paymentModeText_${index}`] ? 'border-destructive' : ''}
                           />
-                          {errors[`paymentModeText_${index}`] && (
-                            <p className="text-xs text-destructive">{errors[`paymentModeText_${index}`]}</p>
-                          )}
                         </div>
                         <div className="w-28 space-y-1">
                           <Label htmlFor={`payment-mode-value-${index}`} className="text-xs text-muted-foreground">
@@ -543,7 +517,6 @@ export default function Buildings() {
                             type="number"
                             placeholder="%"
                             min="0"
-                            max="100"
                             step="0.01"
                             value={mode.value}
                             onChange={(e) => updatePaymentMode(index, 'value', e.target.value)}
@@ -558,7 +531,6 @@ export default function Buildings() {
                           variant="ghost"
                           size="icon"
                           onClick={() => removePaymentMode(index)}
-                          disabled={paymentModes.length <= 1}
                           className="mt-6 shrink-0"
                         >
                           <X className="h-4 w-4" />
