@@ -27,6 +27,7 @@ export type Database = {
           other_charges: number
           rate_per_sqft: number
           registration_charges: number
+           payment_modes: Json 
           stamp_duty: number
           updated_at: string
         }
@@ -43,6 +44,7 @@ export type Database = {
           rate_per_sqft: number
           registration_charges?: number
           stamp_duty?: number
+          payment_modes?: Json 
           updated_at?: string
         }
         Update: {
@@ -58,6 +60,7 @@ export type Database = {
           rate_per_sqft?: number
           registration_charges?: number
           stamp_duty?: number
+          payment_modes?: Json 
           updated_at?: string
         }
         Relationships: []

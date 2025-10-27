@@ -12,6 +12,11 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+interface PaymentMode {
+  text: string;
+  value: number;
+}
+
 interface Building {
   id: string;
   name: string;
@@ -23,6 +28,7 @@ interface Building {
   stamp_duty: number;
   legal_charges: number;
   other_charges: number;
+  payment_modes?: PaymentMode[];
 }
 
 interface Flat {
@@ -42,6 +48,7 @@ interface QuoteData {
   totalArea: number;
   agreementAmount: number;
   loanAmount: number;
+  paymentModes: PaymentMode[];
   statutories: {
     maintenance: number;
     electrical: number;
@@ -87,7 +94,32 @@ export default function GenerateQuote() {
 
   const fetchBuildings = async () => {
     const { data } = await supabase.from('buildings').select('*').order('name');
-    setBuildings(data || []);
+    if (data) {
+      // Safely parse payment modes from JSON
+      const buildingsWithPaymentModes = data.map(building => {
+        try {
+          let payment_modes: PaymentMode[] = [];
+          if (building.payment_modes) {
+            if (typeof building.payment_modes === 'string') {
+              payment_modes = JSON.parse(building.payment_modes);
+            } else {
+              payment_modes = building.payment_modes as PaymentMode[];
+            }
+          }
+          return {
+            ...building,
+            payment_modes
+          };
+        } catch (error) {
+          console.error('Error parsing payment modes:', error);
+          return {
+            ...building,
+            payment_modes: []
+          };
+        }
+      });
+      setBuildings(buildingsWithPaymentModes);
+    }
   };
 
   const fetchFlats = async (buildingId: string) => {
@@ -174,6 +206,7 @@ export default function GenerateQuote() {
       totalArea,
       agreementAmount,
       loanAmount,
+      paymentModes: building.payment_modes || [],
       statutories,
       statutoriesPercent,
       totalStatutories,
@@ -218,7 +251,7 @@ export default function GenerateQuote() {
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('', 105, currentY, { align: 'center' });
+    doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 10;
     
     doc.setFontSize(14);
@@ -240,7 +273,7 @@ export default function GenerateQuote() {
     // Loan and Agreement Amount Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['', 'loan amount', 'Agreement amount']],
+      head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
@@ -249,33 +282,18 @@ export default function GenerateQuote() {
     });
     currentY = getLastAutoTableFinalY(doc) + 15;
 
-    // Payment Schedule Table
-    const paymentSchedule = [
-      { srNo: 1, mode: 'Agreement', percent: 30 },
-      { srNo: 2, mode: 'PLINTH', percent: 15 },
-      { srNo: 3, mode: '1st Slab', percent: 5 },
-      { srNo: 4, mode: '2nd Slab', percent: 5 },
-      { srNo: 5, mode: '3rd Slab', percent: 5 },
-      { srNo: 6, mode: '4th Slab', percent: 5 },
-      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
-      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
-      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
-      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
-      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
-      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
-    ];
-
+    // Dynamic Payment Schedule Table
     checkPageBreak(100);
     autoTable(doc, {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        ...paymentSchedule.map(p => [
-          p.srNo.toString(), 
-          p.mode, 
-          `${p.percent}%`, 
+        ...quoteData.paymentModes.map((paymentMode, index) => [
+          (index + 1).toString(), 
+          paymentMode.text, 
+          `${paymentMode.value}%`, 
           '', 
-          formatINR((quoteData.agreementAmount * p.percent) / 100)
+          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
@@ -312,13 +330,13 @@ export default function GenerateQuote() {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        [15, 'maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-        [16, 'Electical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-        [17, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-        [18, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-        [19, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-        [20, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-        [21, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
+        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
+        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
+        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
+        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
         ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
@@ -383,7 +401,7 @@ export default function GenerateQuote() {
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('', 105, currentY, { align: 'center' });
+    doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 10;
     
     doc.setFontSize(14);
@@ -405,7 +423,7 @@ export default function GenerateQuote() {
     // Loan and Agreement Amount Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['', 'loan amount', 'Agreement amount']],
+      head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
@@ -414,33 +432,18 @@ export default function GenerateQuote() {
     });
     currentY = getLastAutoTableFinalY(doc) + 15;
 
-    // Payment Schedule Table
-    const paymentSchedule = [
-      { srNo: 1, mode: 'Agreement', percent: 30 },
-      { srNo: 2, mode: 'PLINTH', percent: 15 },
-      { srNo: 3, mode: '1st Slab', percent: 5 },
-      { srNo: 4, mode: '2nd Slab', percent: 5 },
-      { srNo: 5, mode: '3rd Slab', percent: 5 },
-      { srNo: 6, mode: '4th Slab', percent: 5 },
-      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
-      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
-      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
-      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
-      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
-      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
-    ];
-
+    // Dynamic Payment Schedule Table
     checkPageBreak(100);
     autoTable(doc, {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        ...paymentSchedule.map(p => [
-          p.srNo.toString(), 
-          p.mode, 
-          `${p.percent}%`, 
+        ...quoteData.paymentModes.map((paymentMode, index) => [
+          (index + 1).toString(), 
+          paymentMode.text, 
+          `${paymentMode.value}%`, 
           '', 
-          formatINR((quoteData.agreementAmount * p.percent) / 100)
+          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
@@ -477,13 +480,13 @@ export default function GenerateQuote() {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        [15, 'maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-        [16, 'Electical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-        [17, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-        [18, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-        [19, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-        [20, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-        [21, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
+        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
+        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
+        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
+        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
         ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
@@ -594,7 +597,7 @@ export default function GenerateQuote() {
     // Loan and Agreement Amount Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['', 'loan amount', 'Agreement amount']],
+      head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
@@ -603,33 +606,18 @@ export default function GenerateQuote() {
     });
     currentY = getLastAutoTableFinalY(doc) + 15;
 
-    // Payment Schedule Table
-    const paymentSchedule = [
-      { srNo: 1, mode: 'Agreement', percent: 30 },
-      { srNo: 2, mode: 'PLINTH', percent: 15 },
-      { srNo: 3, mode: '1st Slab', percent: 5 },
-      { srNo: 4, mode: '2nd Slab', percent: 5 },
-      { srNo: 5, mode: '3rd Slab', percent: 5 },
-      { srNo: 6, mode: '4th Slab', percent: 5 },
-      { srNo: 7, mode: 'Completion of All Slabs', percent: 5 },
-      { srNo: 8, mode: 'Internal Plaster, Flooring Doors & Windows', percent: 5 },
-      { srNo: 9, mode: 'Sanitary fittings, Staircase, lift wells, lobbies', percent: 5 },
-      { srNo: 10, mode: 'External Plumbing & External Plaster, Elevation, Terraces with Waterproofing', percent: 5 },
-      { srNo: 11, mode: 'Lifts, water pumps, electrical fittings', percent: 5 },
-      { srNo: 12, mode: 'At the Time of Possession', percent: 10 }
-    ];
-
+    // Dynamic Payment Schedule Table
     checkPageBreak(100);
     autoTable(doc, {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        ...paymentSchedule.map(p => [
-          p.srNo.toString(), 
-          p.mode, 
-          `${p.percent}%`, 
+        ...quoteData.paymentModes.map((paymentMode, index) => [
+          (index + 1).toString(), 
+          paymentMode.text, 
+          `${paymentMode.value}%`, 
           '', 
-          formatINR((quoteData.agreementAmount * p.percent) / 100)
+          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
@@ -666,13 +654,13 @@ export default function GenerateQuote() {
       startY: currentY,
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
-        [15, 'maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-        [16, 'Electical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-        [17, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-        [18, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-        [19, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-        [20, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-        [21, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
+        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
+        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
+        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
+        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
         ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',

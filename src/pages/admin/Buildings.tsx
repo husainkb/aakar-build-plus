@@ -7,8 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Copy, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface PaymentMode {
+  text: string;
+  value: number;
+}
 
 interface Building {
   id: string;
@@ -21,6 +26,7 @@ interface Building {
   stamp_duty: number;
   legal_charges: number;
   other_charges: number;
+  payment_modes?: PaymentMode[];
 }
 
 export default function Buildings() {
@@ -41,6 +47,9 @@ export default function Buildings() {
     legal_charges: '',
     other_charges: '',
   });
+  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([
+    { text: '', value: 0 }
+  ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -67,8 +76,33 @@ export default function Buildings() {
     if (error) {
       toast.error('Failed to fetch buildings');
     } else {
-      setBuildings(data || []);
-      setFilteredBuildings(data || []);
+      // Safely parse payment_modes JSON from database
+      const buildingsWithPaymentModes = data?.map(building => {
+        try {
+          // Handle both string JSON and direct object, and handle null/undefined
+          let payment_modes: PaymentMode[] = [];
+          if (building.payment_modes) {
+            if (typeof building.payment_modes === 'string') {
+              payment_modes = JSON.parse(building.payment_modes);
+            } else {
+              payment_modes = building.payment_modes as PaymentMode[];
+            }
+          }
+          return {
+            ...building,
+            payment_modes
+          };
+        } catch (error) {
+          console.error('Error parsing payment_modes for building:', building.id, error);
+          return {
+            ...building,
+            payment_modes: []
+          };
+        }
+      }) || [];
+      
+      setBuildings(buildingsWithPaymentModes);
+      setFilteredBuildings(buildingsWithPaymentModes);
     }
   };
 
@@ -122,6 +156,25 @@ export default function Buildings() {
       newErrors.other_charges = 'Other Charges must be 0 or greater';
     }
 
+    // Validate payment modes
+    const totalPercentage = paymentModes.reduce((sum, mode) => sum + mode.value, 0);
+    if (totalPercentage !== 100) {
+      newErrors.paymentModes = `Total percentage must be 100%. Current total: ${totalPercentage}%`;
+    }
+
+    // Validate individual payment modes
+    paymentModes.forEach((mode, index) => {
+      if (!mode.text.trim()) {
+        newErrors[`paymentModeText_${index}`] = 'Payment mode name is required';
+      }
+      if (mode.value <= 0 || mode.value > 100) {
+        newErrors[`paymentModeValue_${index}`] = 'Percentage must be between 1 and 100';
+      }
+      if (isNaN(mode.value)) {
+        newErrors[`paymentModeValue_${index}`] = 'Percentage must be a valid number';
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -146,38 +199,36 @@ export default function Buildings() {
       stamp_duty: parseFloat(formData.stamp_duty),
       legal_charges: parseFloat(formData.legal_charges),
       other_charges: parseFloat(formData.other_charges),
+      payment_modes: JSON.stringify(paymentModes)
     };
 
-    if (editingBuilding) {
-      const { error } = await supabase
-        .from('buildings')
-        .update(buildingData)
-        .eq('id', editingBuilding.id);
+    try {
+      if (editingBuilding) {
+        const { error } = await supabase
+          .from('buildings')
+          .update(buildingData)
+          .eq('id', editingBuilding.id);
 
-      if (error) {
-        toast.error('Failed to update building');
-      } else {
+        if (error) throw error;
         toast.success('Building updated successfully');
-        setDialogOpen(false);
-        fetchBuildings();
-        resetForm();
-      }
-    } else {
-      const { error } = await supabase
-        .from('buildings')
-        .insert([buildingData]);
-
-      if (error) {
-        toast.error('Failed to create building');
       } else {
-        toast.success('Building created successfully');
-        setDialogOpen(false);
-        fetchBuildings();
-        resetForm();
-      }
-    }
+        const { error } = await supabase
+          .from('buildings')
+          .insert([buildingData]);
 
-    setLoading(false);
+        if (error) throw error;
+        toast.success('Building created successfully');
+      }
+
+      setDialogOpen(false);
+      fetchBuildings();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving building:', error);
+      toast.error('Failed to save building');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (building: Building) => {
@@ -193,6 +244,14 @@ export default function Buildings() {
       legal_charges: building.legal_charges.toString(),
       other_charges: building.other_charges.toString(),
     });
+    
+    // Use the building's payment modes if they exist, otherwise start with one empty row
+    if (building.payment_modes && building.payment_modes.length > 0) {
+      setPaymentModes(building.payment_modes);
+    } else {
+      setPaymentModes([{ text: '', value: 0 }]);
+    }
+    
     setErrors({});
     setDialogOpen(true);
   };
@@ -214,8 +273,7 @@ export default function Buildings() {
   };
 
   const handleDuplicate = (building: Building) => {
-    // Prepare duplicated data for the form, but do not save to DB
-    setEditingBuilding(null); // treat as new
+    setEditingBuilding(null);
     setFormData({
       name: `${building.name} (copy)`,
       rate_per_sqft: building.rate_per_sqft.toString(),
@@ -227,6 +285,13 @@ export default function Buildings() {
       legal_charges: building.legal_charges.toString(),
       other_charges: building.other_charges.toString(),
     });
+    
+    if (building.payment_modes && building.payment_modes.length > 0) {
+      setPaymentModes(building.payment_modes);
+    } else {
+      setPaymentModes([{ text: '', value: 0 }]);
+    }
+    
     setErrors({});
     setDialogOpen(true);
   };
@@ -243,8 +308,34 @@ export default function Buildings() {
       legal_charges: '',
       other_charges: '',
     });
+    setPaymentModes([{ text: '', value: 0 }]);
     setEditingBuilding(null);
     setErrors({});
+  };
+
+  const addPaymentMode = () => {
+    setPaymentModes([...paymentModes, { text: '', value: 0 }]);
+  };
+
+  const removePaymentMode = (index: number) => {
+    if (paymentModes.length > 1) {
+      const newModes = paymentModes.filter((_, i) => i !== index);
+      setPaymentModes(newModes);
+    }
+  };
+
+  const updatePaymentMode = (index: number, field: keyof PaymentMode, value: string | number) => {
+    const newModes = [...paymentModes];
+    if (field === 'value') {
+      newModes[index][field] = Number(value);
+    } else {
+      newModes[index][field] = value as string;
+    }
+    setPaymentModes(newModes);
+  };
+
+  const getTotalPercentage = () => {
+    return paymentModes.reduce((sum, mode) => sum + mode.value, 0);
   };
 
   return (
@@ -265,11 +356,11 @@ export default function Buildings() {
                 Add Building
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingBuilding ? 'Edit Building' : 'Add New Building'}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="name" className="text-muted-foreground">Building Name *</Label>
@@ -398,9 +489,103 @@ export default function Buildings() {
                     {errors.other_charges && <p className="text-xs text-destructive">{errors.other_charges}</p>}
                   </div>
                 </div>
-                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                  {loading ? 'Saving...' : editingBuilding ? 'Update Building' : 'Create Building'}
-                </Button>
+
+                {/* Payment Modes Section */}
+                <div className="space-y-4 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-lg font-semibold">Payment Modes</Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Define custom payment schedules. Total must equal 100%.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${
+                        getTotalPercentage() === 100 ? 'text-green-600' : 'text-destructive'
+                      }`}>
+                        Total: {getTotalPercentage()}%
+                      </span>
+                      <Button type="button" onClick={addPaymentMode} variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Mode
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {errors.paymentModes && (
+                    <p className="text-xs text-destructive font-medium">{errors.paymentModes}</p>
+                  )}
+
+                  <div className="space-y-3 max-h-60 overflow-y-auto p-1">
+                    {paymentModes.map((mode, index) => (
+                      <div key={index} className="flex gap-2 items-start p-3 border rounded-lg bg-muted/50">
+                        <div className="flex-1 space-y-1">
+                          <Label htmlFor={`payment-mode-text-${index}`} className="text-xs text-muted-foreground">
+                            Payment Mode Name
+                          </Label>
+                          <Input
+                            id={`payment-mode-text-${index}`}
+                            placeholder="e.g., Booking Amount, On Possession, etc."
+                            value={mode.text}
+                            onChange={(e) => updatePaymentMode(index, 'text', e.target.value)}
+                            className={errors[`paymentModeText_${index}`] ? 'border-destructive' : ''}
+                          />
+                          {errors[`paymentModeText_${index}`] && (
+                            <p className="text-xs text-destructive">{errors[`paymentModeText_${index}`]}</p>
+                          )}
+                        </div>
+                        <div className="w-28 space-y-1">
+                          <Label htmlFor={`payment-mode-value-${index}`} className="text-xs text-muted-foreground">
+                            Percentage (%)
+                          </Label>
+                          <Input
+                            id={`payment-mode-value-${index}`}
+                            type="number"
+                            placeholder="%"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={mode.value}
+                            onChange={(e) => updatePaymentMode(index, 'value', e.target.value)}
+                            className={errors[`paymentModeValue_${index}`] ? 'border-destructive' : ''}
+                          />
+                          {errors[`paymentModeValue_${index}`] && (
+                            <p className="text-xs text-destructive">{errors[`paymentModeValue_${index}`]}</p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removePaymentMode(index)}
+                          disabled={paymentModes.length <= 1}
+                          className="mt-6 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {paymentModes.length === 0 && (
+                    <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                      <p className="text-muted-foreground">No payment modes added yet.</p>
+                      <Button type="button" onClick={addPaymentMode} variant="outline" className="mt-2">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add First Payment Mode
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? 'Saving...' : editingBuilding ? 'Update Building' : 'Create Building'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm} disabled={loading}>
+                    Reset
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
@@ -429,6 +614,7 @@ export default function Buildings() {
                     <TableHead className="min-w-[90px]">Name</TableHead>
                     <TableHead className="min-w-[90px]">Rate/Sqft</TableHead>
                     <TableHead className="min-w-[90px]">Maintenance</TableHead>
+                    <TableHead className="min-w-[90px]">Payment Modes</TableHead>
                     <TableHead className="min-w-[90px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -438,6 +624,18 @@ export default function Buildings() {
                       <TableCell className="font-medium break-words max-w-[120px]">{building.name}</TableCell>
                       <TableCell>₹{building.rate_per_sqft.toFixed(2)}</TableCell>
                       <TableCell>₹{building.maintenance.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-medium">
+                            {building.payment_modes?.length || 0} custom modes
+                          </span>
+                          {building.payment_modes && building.payment_modes.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              Total: {building.payment_modes.reduce((sum, mode) => sum + mode.value, 0)}%
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(building)}>
