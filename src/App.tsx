@@ -7,6 +7,8 @@ import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Buildings from "./pages/admin/Buildings";
 import Flats from "./pages/admin/Flats";
@@ -14,6 +16,7 @@ import AdminReports from "./pages/admin/Reports";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
 import StaffReports from "./pages/staff/Reports";
+import ChangePassword from "./pages/shared/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/auth/Signup";
 
@@ -30,13 +33,17 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/signup" element={<Signup />} />
+            <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
             <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
+            <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />
             <Route path="/staff/generate-quote" element={<ProtectedRoute requiredRole="staff"><GenerateQuote /></ProtectedRoute>} />
             <Route path="/staff/reports" element={<ProtectedRoute requiredRole="staff"><StaffReports /></ProtectedRoute>} />
+            <Route path="/staff/change-password" element={<ProtectedRoute requiredRole="staff"><ChangePassword /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

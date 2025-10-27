@@ -12,6 +12,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: any }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: any }>;
+  updatePassword: (newPassword: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,8 +115,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     toast.success('Signed out successfully!');
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user?.email) {
+      return { error: { message: 'No user logged in' } };
+    }
+
+    // Verify current password by attempting to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      return { error: { message: 'Current password is incorrect' } };
+    }
+
+    // Update to new password
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (!error) {
+      toast.success('Password changed successfully!');
+    }
+
+    return { error };
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth/reset-password`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (!error) {
+      toast.success('Password reset link sent to your email!');
+    }
+
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (!error) {
+      toast.success('Password updated successfully!');
+    }
+
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, userRole, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      userRole, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut,
+      changePassword,
+      resetPasswordForEmail,
+      updatePassword
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,6 +70,7 @@ export default function GenerateQuote() {
   const [selectedBuilding, setSelectedBuilding] = useState<string>('');
   const [selectedWing, setSelectedWing] = useState<string>('');
   const [selectedFlat, setSelectedFlat] = useState<string>('');
+  const [ratePerSqft, setRatePerSqft] = useState<number>(0);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
 
   useEffect(() => {
@@ -91,6 +93,19 @@ export default function GenerateQuote() {
     setFlats(data || []);
   };
 
+  const handleBuildingChange = (value: string) => {
+    setSelectedBuilding(value);
+    setSelectedWing('');
+    setSelectedFlat('');
+    setQuoteData(null);
+    
+    // Auto-populate rate per sqft from selected building
+    const building = buildings.find(b => b.id === value);
+    if (building) {
+      setRatePerSqft(Number(building.rate_per_sqft));
+    }
+  };
+
   const handleGenerateQuote = async () => {
     if (!selectedBuilding || !selectedFlat) {
       toast.error('Please select building and flat');
@@ -103,7 +118,9 @@ export default function GenerateQuote() {
     if (!building || !flat) return;
 
     const totalArea = flat.square_foot + (flat.terrace_area || 0);
-    const agreementAmount = totalArea * building.rate_per_sqft;
+    // Use edited rate or original building rate
+    const basicRate = ratePerSqft || Number(building.rate_per_sqft);
+    const agreementAmount = totalArea * basicRate;
     const loanAmount = agreementAmount * 0.95;
 
     // Statuatories calculations
@@ -729,7 +746,7 @@ export default function GenerateQuote() {
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Building</Label>
-                <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
+                <Select value={selectedBuilding} onValueChange={handleBuildingChange}>
                   <SelectTrigger className="bg-background text-foreground">
                     <SelectValue placeholder="Select building" className="placeholder:text-muted-foreground" />
                   </SelectTrigger>
@@ -737,6 +754,18 @@ export default function GenerateQuote() {
                     {buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rate">Rate / Sqft</Label>
+                <Input
+                  id="rate"
+                  type="number"
+                  placeholder="Rate per sqft"
+                  value={ratePerSqft || ''}
+                  onChange={(e) => setRatePerSqft(Number(e.target.value))}
+                  disabled={!selectedBuilding}
+                  className="bg-background text-foreground"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Wing</Label>
