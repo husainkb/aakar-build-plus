@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Building2, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
+  const { forgotPassword } = useAuth(); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +26,7 @@ export default function ForgotPassword() {
     }
 
     if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
@@ -36,26 +38,21 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('reset-password-direct', {
-        body: { email, newPassword }
-      });
+      const { error } = await forgotPassword(email, newPassword);
 
-      if (error) throw error;
-
-      if (data?.error) {
-        toast.error(data.error);
-        setLoading(false);
-        return;
+      if (error) {
+        throw new Error(error.message || 'Failed to reset password');
       }
 
-      toast.success('Password reset successfully! You can now login');
+      toast.success('Password reset successfully! You can now login with your new password.');
+
       setTimeout(() => {
         navigate('/auth/login');
-      }, 1200);
-
+      }, 1500);
     } catch (error: any) {
-      console.error('Reset error:', error);
-      toast.error('Failed to reset password. Please try again.');
+      console.error('Reset password error:', error);
+      toast.error(error.message || 'Failed to reset password. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -106,11 +103,13 @@ export default function ForgotPassword() {
                   required
                 />
               </div>
+
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Resetting...' : 'Reset Password'}
               </Button>
+
               <Link to="/auth/login">
-                <Button variant="ghost" className="w-full">
+                <Button variant="ghost" className="w-full mt-2">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Login
                 </Button>

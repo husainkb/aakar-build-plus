@@ -1,8 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+// ✅ Admin Supabase Client (for password reset by email)
+const supabaseAdmin = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY!
+);
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +21,7 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: any }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
+  forgotPassword: (email: string, newPassword: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,14 +33,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user role separately
           setTimeout(async () => {
             const { data } = await supabase
               .from('profiles')
@@ -51,7 +56,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -120,7 +124,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { error: { message: 'No user logged in' } };
     }
 
-    // Verify current password by attempting to sign in
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email,
       password: currentPassword,
@@ -130,7 +133,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { error: { message: 'Current password is incorrect' } };
     }
 
-    // Update to new password
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -168,6 +170,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
+  const forgotPassword = async (email: string, newPassword: string) => {
+    try {
+      // Fetch all users and match by email
+      const { data: users, error: fetchError } = await supabaseAdmin.auth.admin.listUsers();
+      if (fetchError) throw fetchError;
+
+      const user = users?.users?.find((u: any) => u.email === email);
+      if (!user) {
+        toast.error('No user found with that email');
+        return { error: { message: 'User not found' } };
+      }
+
+      // Update the user’s password using admin privileges
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      toast.success('Password updated successfully!');
+      return { error: null };
+    } catch (error: any) {
+      console.error('Forgot Password Error:', error.message);
+      toast.error('Failed to update password');
+      return { error };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -179,7 +209,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signOut,
       changePassword,
       resetPasswordForEmail,
-      updatePassword
+      updatePassword,
+      forgotPassword
     }}>
       {children}
     </AuthContext.Provider>
