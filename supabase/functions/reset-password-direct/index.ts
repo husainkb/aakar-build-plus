@@ -7,7 +7,6 @@ const corsHeaders = {
 
 interface ResetPasswordRequest {
   email: string
-  name: string
   newPassword: string
 }
 
@@ -18,14 +17,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, name, newPassword }: ResetPasswordRequest = await req.json()
+    const { email, newPassword }: ResetPasswordRequest = await req.json()
 
-    console.log('Reset password request for:', { email, name })
+    console.log('Reset password request for:', { email })
 
     // Validate inputs
-    if (!email || !name || !newPassword) {
+    if (!email || !newPassword) {
       return new Response(
-        JSON.stringify({ error: 'Email, name, and new password are required' }),
+        JSON.stringify({ error: 'Email and new password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -52,15 +51,14 @@ Deno.serve(async (req) => {
     // Verify user exists with matching email and name
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name')
+      .select('id, email')
       .eq('email', email.toLowerCase().trim())
-      .eq('name', name.trim())
-      .single()
+      .maybeSingle()
 
     if (profileError || !profile) {
       console.error('Profile verification failed:', profileError)
       return new Response(
-        JSON.stringify({ error: 'Invalid email or name combination' }),
+        JSON.stringify({ error: 'No account found with this email' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

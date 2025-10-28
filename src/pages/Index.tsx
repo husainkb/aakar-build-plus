@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
@@ -133,6 +133,9 @@ const Index = () => {
                   <Label htmlFor="password" className="text-sm font-medium text-[#bababa]">
                       Password
                   </Label>
+                  <Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot Password?
+                  </Link>
                 </div>
                 <Input
                   id="password"
