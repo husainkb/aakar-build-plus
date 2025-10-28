@@ -83,7 +83,7 @@ export default function Buildings() {
             if (typeof building.payment_modes === 'string') {
               payment_modes = JSON.parse(building.payment_modes);
             } else {
-              payment_modes = building.payment_modes as PaymentMode[];
+              payment_modes = building.payment_modes as unknown as PaymentMode[];
             }
           }
           return {
