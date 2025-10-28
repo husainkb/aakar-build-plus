@@ -133,7 +133,7 @@ const Index = () => {
                   <Label htmlFor="password" className="text-sm font-medium text-[#bababa]">
                       Password
                   </Label>
-                  <Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
+                  <Link to="/auth/forgot-password" className="text-xs text-white hover:underline">
                     Forgot Password?
                   </Link>
                 </div>
