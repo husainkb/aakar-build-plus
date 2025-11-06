@@ -252,10 +252,6 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 10;
-    
-    doc.setFontSize(14);
-    doc.text(`${quoteData.building}`, 105, currentY, { align: 'center' });
     currentY += 20;
 
     // Area Table in Tabular Format
@@ -402,10 +398,6 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 10;
-    
-    doc.setFontSize(14);
-    doc.text(`${quoteData.building}`, 105, currentY, { align: 'center' });
     currentY += 20;
 
     // Area Table in Tabular Format
@@ -531,7 +523,8 @@ export default function GenerateQuote() {
     const pdfFile = new File([pdfBlob], `AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
 
     // Prepare message
-    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo} (${quoteData.wing})\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
+    const wingText = quoteData.wing ? ` (${quoteData.wing})` : '';
+    const message = `Quote\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
 
     // Mobile: Use Web Share API to share PDF directly to WhatsApp
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -576,10 +569,6 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 10;
-    
-    doc.setFontSize(14);
-    doc.text(`${quoteData.building}`, 105, currentY, { align: 'center' });
     currentY += 20;
 
     // Area Table in Tabular Format
@@ -706,7 +695,7 @@ export default function GenerateQuote() {
 
     // Prepare message
     const wingText = quoteData.wing ? ` (${quoteData.wing})` : '';
-    const message = `Quote\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
+    const message = `Quote\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
 
     // Mobile: Use Web Share API to share PDF directly to email app
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -810,7 +799,6 @@ export default function GenerateQuote() {
             </CardHeader>
             <CardContent className="space-y-4 bg-card text-card-foreground">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
                 <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo}{quoteData.wing ? ` (${quoteData.wing})` : ''}</div>
                 <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
                 <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
