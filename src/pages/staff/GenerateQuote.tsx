@@ -799,6 +799,7 @@ export default function GenerateQuote() {
             </CardHeader>
             <CardContent className="space-y-4 bg-card text-card-foreground">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+              <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
                 <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo}{quoteData.wing ? ` (${quoteData.wing})` : ''}</div>
                 <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
                 <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
