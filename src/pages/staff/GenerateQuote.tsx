@@ -169,7 +169,7 @@ export default function GenerateQuote() {
     const loanAmount = agreementAmount * 0.95;
 
     // Statuatories calculations
-    const registrationCharges = agreementAmount * (building.registration_charges / 100);
+    const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
     const gstTax = agreementAmount * (building.gst_tax / 100);
     const stampDuty = agreementAmount * (building.stamp_duty / 100);
 
