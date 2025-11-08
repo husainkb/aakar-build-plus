@@ -21,6 +21,7 @@ interface Building {
   id: string;
   name: string;
   rate_per_sqft: number;
+  minimum_rate_per_sqft: number;
   maintenance: number;
   electrical_water_charges: number;
   registration_charges: number;
@@ -78,6 +79,7 @@ export default function GenerateQuote() {
   const [selectedWing, setSelectedWing] = useState<string>('');
   const [selectedFlat, setSelectedFlat] = useState<string>('');
   const [ratePerSqft, setRatePerSqft] = useState<number>(0);
+  const [rateError, setRateError] = useState<string>('');
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [hasWings, setHasWings] = useState<boolean>(false);
   const [availableWings, setAvailableWings] = useState<string[]>([]);
@@ -138,11 +140,24 @@ export default function GenerateQuote() {
     setSelectedWing('');
     setSelectedFlat('');
     setQuoteData(null);
+    setRateError('');
     
     // Auto-populate rate per sqft from selected building
     const building = buildings.find(b => b.id === value);
     if (building) {
       setRatePerSqft(Number(building.rate_per_sqft));
+    }
+  };
+
+  const handleRateChange = (value: string) => {
+    const newRate = parseFloat(value);
+    setRatePerSqft(newRate);
+    
+    const building = buildings.find(b => b.id === selectedBuilding);
+    if (building && newRate > 0 && newRate < building.minimum_rate_per_sqft) {
+      setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
+    } else {
+      setRateError('');
     }
   };
 
@@ -161,6 +176,13 @@ export default function GenerateQuote() {
     const flat = flats.find(f => f.id === selectedFlat);
 
     if (!building || !flat) return;
+
+    // Validate rate per sqft against minimum
+    if (ratePerSqft < building.minimum_rate_per_sqft) {
+      toast.error(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
+      setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
+      return;
+    }
 
     const totalArea = flat.square_foot + (flat.terrace_area || 0);
     // Use edited rate or original building rate
@@ -754,10 +776,12 @@ export default function GenerateQuote() {
                   type="number"
                   placeholder="Rate per sqft"
                   value={ratePerSqft || ''}
-                  onChange={(e) => setRatePerSqft(Number(e.target.value))}
+                  onChange={(e) => handleRateChange(e.target.value)}
+                  onBlur={(e) => handleRateChange(e.target.value)}
                   disabled={!selectedBuilding}
-                  className="bg-background text-foreground"
+                  className={rateError ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}
                 />
+                {rateError && <p className="text-xs text-destructive">{rateError}</p>}
               </div>
               {hasWings && (
                 <div className="space-y-2">

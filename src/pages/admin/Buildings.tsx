@@ -19,6 +19,7 @@ interface Building {
   id: string;
   name: string;
   rate_per_sqft: number;
+  minimum_rate_per_sqft: number;
   maintenance: number;
   electrical_water_charges: number;
   registration_charges: number;
@@ -39,6 +40,7 @@ export default function Buildings() {
   const [formData, setFormData] = useState({
     name: '',
     rate_per_sqft: '',
+    minimum_rate_per_sqft: '',
     maintenance: '',
     electrical_water_charges: '',
     registration_charges: '',
@@ -119,6 +121,15 @@ export default function Buildings() {
       newErrors.rate_per_sqft = 'Rate per sqft must be greater than 0';
     }
 
+    const minRatePerSqft = parseFloat(formData.minimum_rate_per_sqft);
+    if (!formData.minimum_rate_per_sqft || isNaN(minRatePerSqft) || minRatePerSqft <= 0) {
+      newErrors.minimum_rate_per_sqft = 'Minimum rate per sqft must be greater than 0';
+    }
+
+    if (ratePerSqft && minRatePerSqft && ratePerSqft < minRatePerSqft) {
+      newErrors.rate_per_sqft = 'Rate per sqft cannot be less than minimum rate';
+    }
+
     const maintenance = parseFloat(formData.maintenance);
     if (!formData.maintenance || isNaN(maintenance) || maintenance < 0) {
       newErrors.maintenance = 'Maintenance must be 0 or greater';
@@ -178,6 +189,7 @@ export default function Buildings() {
     const buildingData = {
       name: formData.name.trim(),
       rate_per_sqft: parseFloat(formData.rate_per_sqft),
+      minimum_rate_per_sqft: parseFloat(formData.minimum_rate_per_sqft),
       maintenance: parseFloat(formData.maintenance),
       electrical_water_charges: parseFloat(formData.electrical_water_charges),
       registration_charges: parseFloat(formData.registration_charges),
@@ -222,6 +234,7 @@ export default function Buildings() {
     setFormData({
       name: building.name,
       rate_per_sqft: building.rate_per_sqft.toString(),
+      minimum_rate_per_sqft: building.minimum_rate_per_sqft.toString(),
       maintenance: building.maintenance.toString(),
       electrical_water_charges: building.electrical_water_charges.toString(),
       registration_charges: building.registration_charges.toString(),
@@ -263,6 +276,7 @@ export default function Buildings() {
     setFormData({
       name: `${building.name} (copy)`,
       rate_per_sqft: building.rate_per_sqft.toString(),
+      minimum_rate_per_sqft: building.minimum_rate_per_sqft.toString(),
       maintenance: building.maintenance.toString(),
       electrical_water_charges: building.electrical_water_charges.toString(),
       registration_charges: building.registration_charges.toString(),
@@ -286,6 +300,7 @@ export default function Buildings() {
     setFormData({
       name: '',
       rate_per_sqft: '',
+      minimum_rate_per_sqft: '',
       maintenance: '',
       electrical_water_charges: '',
       registration_charges: '',
@@ -370,6 +385,20 @@ export default function Buildings() {
                       required
                     />
                     {errors.rate_per_sqft && <p className="text-xs text-destructive">{errors.rate_per_sqft}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minimum_rate_per_sqft" className="text-muted-foreground">Minimum Rate per Sqft * (₹)</Label>
+                    <Input
+                      id="minimum_rate_per_sqft"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.minimum_rate_per_sqft}
+                      onChange={(e) => setFormData({ ...formData, minimum_rate_per_sqft: e.target.value })}
+                      className={errors.minimum_rate_per_sqft ? 'border-destructive' : ''}
+                      required
+                    />
+                    {errors.minimum_rate_per_sqft && <p className="text-xs text-destructive">{errors.minimum_rate_per_sqft}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="maintenance" className="text-muted-foreground">Maintenance * (₹)</Label>

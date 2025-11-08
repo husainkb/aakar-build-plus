@@ -23,11 +23,11 @@ export type Database = {
           id: string
           legal_charges: number
           maintenance: number
+          minimum_rate_per_sqft: number
           name: string
           other_charges: number
           rate_per_sqft: number
           registration_charges: number
-           payment_modes: Json 
           stamp_duty: number
           updated_at: string
         }
@@ -39,12 +39,12 @@ export type Database = {
           id?: string
           legal_charges?: number
           maintenance?: number
+          minimum_rate_per_sqft?: number
           name: string
           other_charges?: number
           rate_per_sqft: number
           registration_charges?: number
           stamp_duty?: number
-          payment_modes?: Json 
           updated_at?: string
         }
         Update: {
@@ -55,12 +55,12 @@ export type Database = {
           id?: string
           legal_charges?: number
           maintenance?: number
+          minimum_rate_per_sqft?: number
           name?: string
           other_charges?: number
           rate_per_sqft?: number
           registration_charges?: number
           stamp_duty?: number
-          payment_modes?: Json 
           updated_at?: string
         }
         Relationships: []
