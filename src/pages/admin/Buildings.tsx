@@ -81,11 +81,12 @@ export default function Buildings() {
         try {
           // Handle both string JSON and direct object, and handle null/undefined
           let payment_modes: PaymentMode[] = [];
-          if (building.payment_modes) {
-            if (typeof building.payment_modes === 'string') {
-              payment_modes = JSON.parse(building.payment_modes);
+          const buildingAny = building as any;
+          if (buildingAny.payment_modes) {
+            if (typeof buildingAny.payment_modes === 'string') {
+              payment_modes = JSON.parse(buildingAny.payment_modes);
             } else {
-              payment_modes = building.payment_modes as unknown as PaymentMode[];
+              payment_modes = buildingAny.payment_modes as PaymentMode[];
             }
           }
           return {

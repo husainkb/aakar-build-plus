@@ -26,6 +26,7 @@ export type Database = {
           minimum_rate_per_sqft: number
           name: string
           other_charges: number
+          payment_modes: Json | null
           rate_per_sqft: number
           registration_charges: number
           stamp_duty: number
@@ -42,6 +43,7 @@ export type Database = {
           minimum_rate_per_sqft?: number
           name: string
           other_charges?: number
+          payment_modes?: Json | null
           rate_per_sqft: number
           registration_charges?: number
           stamp_duty?: number
@@ -58,6 +60,7 @@ export type Database = {
           minimum_rate_per_sqft?: number
           name?: string
           other_charges?: number
+          payment_modes?: Json | null
           rate_per_sqft?: number
           registration_charges?: number
           stamp_duty?: number
