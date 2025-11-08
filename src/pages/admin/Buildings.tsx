@@ -101,20 +101,20 @@ export default function Buildings() {
           };
         }
       }) || [];
-      
+
       setBuildings(buildingsWithPaymentModes);
       setFilteredBuildings(buildingsWithPaymentModes);
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-    if (!formData.name.trim() || formData.name.length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-    if (formData.name.length > 150) {
-      newErrors.name = 'Name must be less than 150 characters';
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Building name is required';
     }
 
     const ratePerSqft = parseFloat(formData.rate_per_sqft);
@@ -138,54 +138,60 @@ export default function Buildings() {
 
     const electrical = parseFloat(formData.electrical_water_charges);
     if (!formData.electrical_water_charges || isNaN(electrical) || electrical < 0) {
-      newErrors.electrical_water_charges = 'Electrical & Water Charges must be 0 or greater';
+      newErrors.electrical_water_charges = 'Electrical & water charges must be 0 or greater';
     }
 
     const registration = parseFloat(formData.registration_charges);
     if (!formData.registration_charges || isNaN(registration) || registration < 0 || registration > 100) {
-      newErrors.registration_charges = 'Registration Charges must be between 0 and 100%';
+      newErrors.registration_charges = 'Registration charges must be between 0 and 100';
     }
 
     const gst = parseFloat(formData.gst_tax);
     if (!formData.gst_tax || isNaN(gst) || gst < 0 || gst > 100) {
-      newErrors.gst_tax = 'GST/S Tax must be between 0 and 100%';
+      newErrors.gst_tax = 'GST/S tax must be between 0 and 100';
     }
 
     const stampDuty = parseFloat(formData.stamp_duty);
     if (!formData.stamp_duty || isNaN(stampDuty) || stampDuty < 0 || stampDuty > 100) {
-      newErrors.stamp_duty = 'Stamp Duty must be between 0 and 100%';
+      newErrors.stamp_duty = 'Stamp duty must be between 0 and 100';
     }
 
-    const legal = parseFloat(formData.legal_charges);
-    if (!formData.legal_charges || isNaN(legal) || legal < 0) {
-      newErrors.legal_charges = 'Legal Charges must be 0 or greater';
+    const legalCharges = parseFloat(formData.legal_charges);
+    if (!formData.legal_charges || isNaN(legalCharges) || legalCharges < 0) {
+      newErrors.legal_charges = 'Legal charges must be 0 or greater';
     }
 
-    const other = parseFloat(formData.other_charges);
-    if (!formData.other_charges || isNaN(other) || other < 0) {
-      newErrors.other_charges = 'Other Charges must be 0 or greater';
+    const otherCharges = parseFloat(formData.other_charges);
+    if (!formData.other_charges || isNaN(otherCharges) || otherCharges < 0) {
+      newErrors.other_charges = 'Other charges must be 0 or greater';
     }
 
-    // Validate individual payment modes
-    paymentModes.forEach((mode, index) => {
-      if (isNaN(mode.value)) {
-        newErrors[`paymentModeValue_${index}`] = 'Percentage must be a valid number';
+    // Validate payment modes
+    if (paymentModes.length > 0) {
+      let totalPercentage = 0;
+      paymentModes.forEach((mode, index) => {
+        if (!mode.text.trim()) {
+          newErrors[`paymentModeText_${index}`] = 'Payment mode name is required';
+        }
+        const value = parseFloat(mode.value.toString());
+        if (isNaN(value) || value <= 0 || value > 100) {
+          newErrors[`paymentModeValue_${index}`] = 'Value must be between 0 and 100';
+        }
+        totalPercentage += value;
+      });
+
+      if (totalPercentage !== 100) {
+        toast.error('Total payment mode percentage must equal 100%');
+        setLoading(false);
+        return;
       }
-    });
+    }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      toast.error('Please fix validation errors');
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     const buildingData = {
       name: formData.name.trim(),
@@ -233,19 +239,18 @@ export default function Buildings() {
   const handleEdit = (building: Building) => {
     setEditingBuilding(building);
     setFormData({
-      name: building.name,
-      rate_per_sqft: building.rate_per_sqft.toString(),
-      minimum_rate_per_sqft: building.minimum_rate_per_sqft.toString(),
-      maintenance: building.maintenance.toString(),
-      electrical_water_charges: building.electrical_water_charges.toString(),
-      registration_charges: building.registration_charges.toString(),
-      gst_tax: building.gst_tax.toString(),
-      stamp_duty: building.stamp_duty.toString(),
-      legal_charges: building.legal_charges.toString(),
-      other_charges: building.other_charges.toString(),
+      name: building.name || '',
+      rate_per_sqft: (building.rate_per_sqft ?? 0).toString(),
+      minimum_rate_per_sqft: (building.minimum_rate_per_sqft ?? 0).toString(),
+      maintenance: (building.maintenance ?? 0).toString(),
+      electrical_water_charges: (building.electrical_water_charges ?? 0).toString(),
+      registration_charges: (building.registration_charges ?? 0).toString(),
+      gst_tax: (building.gst_tax ?? 0).toString(),
+      stamp_duty: (building.stamp_duty ?? 0).toString(),
+      legal_charges: (building.legal_charges ?? 0).toString(),
+      other_charges: (building.other_charges ?? 0).toString(),
     });
     
-    // Use the building's payment modes if they exist, otherwise start with empty array
     if (building.payment_modes && building.payment_modes.length > 0) {
       setPaymentModes(building.payment_modes);
     } else {
@@ -320,22 +325,21 @@ export default function Buildings() {
   };
 
   const removePaymentMode = (index: number) => {
-    const newModes = paymentModes.filter((_, i) => i !== index);
-    setPaymentModes(newModes);
+    setPaymentModes(paymentModes.filter((_, i) => i !== index));
   };
 
-  const updatePaymentMode = (index: number, field: keyof PaymentMode, value: string | number) => {
-    const newModes = [...paymentModes];
+  const updatePaymentMode = (index: number, field: keyof PaymentMode, value: string) => {
+    const updatedModes = [...paymentModes];
     if (field === 'value') {
-      newModes[index][field] = Number(value);
+      updatedModes[index][field] = parseFloat(value) || 0;
     } else {
-      newModes[index][field] = value as string;
+      updatedModes[index][field] = value;
     }
-    setPaymentModes(newModes);
+    setPaymentModes(updatedModes);
   };
 
   const getTotalPercentage = () => {
-    return paymentModes.reduce((sum, mode) => sum + mode.value, 0);
+    return paymentModes.reduce((sum, mode) => sum + mode.value, 0).toFixed(2);
   };
 
   return (
@@ -353,15 +357,12 @@ export default function Buildings() {
             setDialogOpen(open);
           }}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto" onClick={() => {
-                resetForm();
-                setDialogOpen(true);
-              }}>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Building
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingBuilding ? 'Edit Building' : 'Add New Building'}</DialogTitle>
               </DialogHeader>
