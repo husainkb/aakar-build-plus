@@ -166,25 +166,14 @@ export default function Buildings() {
       newErrors.other_charges = 'Other charges must be 0 or greater';
     }
 
-    // Validate payment modes
+    // Remove payment mode validation - only keep basic field validation
     if (paymentModes.length > 0) {
-      let totalPercentage = 0;
       paymentModes.forEach((mode, index) => {
-        if (!mode.text.trim()) {
-          newErrors[`paymentModeText_${index}`] = 'Payment mode name is required';
-        }
         const value = parseFloat(mode.value.toString());
-        if (isNaN(value) || value <= 0 || value > 100) {
-          newErrors[`paymentModeValue_${index}`] = 'Value must be between 0 and 100';
+        if (isNaN(value) || value < 0) {
+          newErrors[`paymentModeValue_${index}`] = 'Value must be 0 or greater';
         }
-        totalPercentage += value;
       });
-
-      if (totalPercentage !== 100) {
-        toast.error('Total payment mode percentage must equal 100%');
-        setLoading(false);
-        return;
-      }
     }
 
     if (Object.keys(newErrors).length > 0) {
