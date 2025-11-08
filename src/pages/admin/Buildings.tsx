@@ -347,11 +347,16 @@ export default function Buildings() {
             <p className="text-muted-foreground">Manage your building inventory and details.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              resetForm();
+            }
             setDialogOpen(open);
-            if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto" onClick={() => {
+                resetForm();
+                setDialogOpen(true);
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Building
               </Button>
