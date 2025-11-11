@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock } from 'lucide-react';
+import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -42,6 +42,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const staffLinks = [
     { href: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/staff/generate-quote', label: 'Generate Quote', icon: FileText },
+    { href: '/staff/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/staff/reports', label: 'Reports', icon: FileBarChart },
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];
