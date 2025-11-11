@@ -96,7 +96,7 @@ export default function GenerateQuote() {
   const [customerTitle, setCustomerTitle] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
   const [customerGender, setCustomerGender] = useState<string>('');
-  const [customerErrors, setCustomerErrors] = useState<{[key: string]: string}>({});
+  const [customerErrors, setCustomerErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchBuildings();
@@ -142,7 +142,7 @@ export default function GenerateQuote() {
   const fetchFlats = async (buildingId: string) => {
     const { data } = await supabase.from('flats').select('*').eq('building_id', buildingId);
     setFlats(data || []);
-    
+
     // Check if building has wings
     const wings = data?.map(f => f.wing).filter(w => w) || [];
     const uniqueWings = [...new Set(wings)].sort();
@@ -156,7 +156,7 @@ export default function GenerateQuote() {
     setSelectedFlat('');
     setQuoteData(null);
     setRateError('');
-    
+
     // Auto-populate rate per sqft from selected building
     const building = buildings.find(b => b.id === value);
     if (building) {
@@ -167,7 +167,7 @@ export default function GenerateQuote() {
   const handleRateChange = (value: string) => {
     const newRate = parseFloat(value);
     setRatePerSqft(newRate);
-    
+
     const building = buildings.find(b => b.id === selectedBuilding);
     if (building && newRate > 0 && newRate < building.minimum_rate_per_sqft) {
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
@@ -185,7 +185,7 @@ export default function GenerateQuote() {
     });
 
     if (!validation.success) {
-      const errors: {[key: string]: string} = {};
+      const errors: { [key: string]: string } = {};
       validation.error.errors.forEach(err => {
         if (err.path[0]) {
           errors[err.path[0].toString()] = err.message;
@@ -195,7 +195,7 @@ export default function GenerateQuote() {
       toast.error('Please fill in all customer details');
       return;
     }
-    
+
     setCustomerErrors({});
 
     if (!selectedBuilding || !selectedFlat) {
@@ -229,7 +229,7 @@ export default function GenerateQuote() {
     // Statuatories calculations with gender-based stamp duty discount
     const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
     const gstTax = agreementAmount * (building.gst_tax / 100);
-    
+
     // Apply 1% discount on stamp duty for Female customers
     let stampDutyPercent = building.stamp_duty;
     if (customerGender === 'Female') {
@@ -350,7 +350,7 @@ export default function GenerateQuote() {
     const pageHeight = doc.internal.pageSize.height;
     const margin = 20;
     let currentY = 20;
-    
+
     // Function to check if we need a new page
     const checkPageBreak = (requiredSpace: number) => {
       if (currentY + requiredSpace > pageHeight - margin) {
@@ -370,7 +370,9 @@ export default function GenerateQuote() {
     // Customer Details
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
     currentY += 15;
 
     // Area Table in Tabular Format
@@ -404,10 +406,10 @@ export default function GenerateQuote() {
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
         ...quoteData.paymentModes.map((paymentMode, index) => [
-          (index + 1).toString(), 
-          paymentMode.text, 
-          `${paymentMode.value}%`, 
-          '', 
+          (index + 1).toString(),
+          paymentMode.text,
+          `${paymentMode.value}%`,
+          '',
           formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
@@ -491,13 +493,20 @@ export default function GenerateQuote() {
     doc.text('Purchaser Signature', margin, currentY);
     doc.line(margin, currentY + 2, margin + 60, currentY + 2);
 
+    currentY += 10;
+
+    // Add customer name under signature
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
+
     doc.save(`Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`);
     toast.success('PDF quote downloaded successfully!');
   };
 
   const handleShareQuote = async () => {
     if (!quoteData) return;
-    
+
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const margin = 20;
@@ -556,10 +565,10 @@ export default function GenerateQuote() {
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
         ...quoteData.paymentModes.map((paymentMode, index) => [
-          (index + 1).toString(), 
-          paymentMode.text, 
-          `${paymentMode.value}%`, 
-          '', 
+          (index + 1).toString(),
+          paymentMode.text,
+          `${paymentMode.value}%`,
+          '',
           formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
@@ -642,6 +651,13 @@ export default function GenerateQuote() {
     // Purchaser Signature
     doc.text('Purchaser Signature', margin, currentY);
     doc.line(margin, currentY + 2, margin + 60, currentY + 2);
+
+    currentY += 10;
+
+    // Add customer name under signature
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
 
     // Get PDF as Blob
     const pdfBlob = doc.output('blob');
@@ -674,7 +690,7 @@ export default function GenerateQuote() {
 
   const handleShareEmail = async () => {
     if (!quoteData) return;
-    
+
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const margin = 20;
@@ -733,10 +749,10 @@ export default function GenerateQuote() {
       head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
       body: [
         ...quoteData.paymentModes.map((paymentMode, index) => [
-          (index + 1).toString(), 
-          paymentMode.text, 
-          `${paymentMode.value}%`, 
-          '', 
+          (index + 1).toString(),
+          paymentMode.text,
+          `${paymentMode.value}%`,
+          '',
           formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
         ['', 'OWN AMT', '', '', ''],
@@ -820,6 +836,13 @@ export default function GenerateQuote() {
     doc.text('Purchaser Signature', margin, currentY);
     doc.line(margin, currentY + 2, margin + 60, currentY + 2);
 
+    currentY += 10;
+
+    // Add customer name under signature
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
+
     // Get PDF as Blob
     const pdfBlob = doc.output('blob');
     const pdfFile = new File([pdfBlob], `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
@@ -849,7 +872,7 @@ export default function GenerateQuote() {
     toast.info('Email clients do not support direct PDF sharing. Please attach the downloaded PDF manually.');
   };
 
-  const filteredFlats = hasWings 
+  const filteredFlats = hasWings
     ? (selectedWing ? flats.filter(f => f.wing === selectedWing) : [])
     : flats;
 
@@ -956,9 +979,9 @@ export default function GenerateQuote() {
               )}
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Flat</Label>
-                <Select 
-                  value={selectedFlat} 
-                  onValueChange={setSelectedFlat} 
+                <Select
+                  value={selectedFlat}
+                  onValueChange={setSelectedFlat}
                   disabled={!selectedBuilding || (hasWings && !selectedWing)}
                 >
                   <SelectTrigger className="bg-background text-foreground">
@@ -981,7 +1004,7 @@ export default function GenerateQuote() {
             </CardHeader>
             <CardContent className="space-y-4 bg-card text-card-foreground">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-              <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
+                <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
                 <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo}{quoteData.wing ? ` (${quoteData.wing})` : ''}</div>
                 <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
                 <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
