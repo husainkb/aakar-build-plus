@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -37,15 +38,22 @@ interface SavedQuote {
 }
 
 export default function SavedQuotes() {
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<SavedQuote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchQuotes();
-  }, []);
+    if (user) {
+      fetchQuotes();
+    }
+  }, [user]);
 
   const fetchQuotes = async () => {
+    if (!user) return;
+    
     try {
+      // RLS policies will automatically filter quotes for staff users
+      // Staff users will only see quotes where created_by = auth.uid()
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select('*')
@@ -285,9 +293,11 @@ export default function SavedQuotes() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-center py-8 text-muted-foreground">Loading quotes...</p>
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
             ) : quotes.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No quotes saved yet.</p>
+              <p className="text-center py-8 text-muted-foreground">No quotes created by you yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
