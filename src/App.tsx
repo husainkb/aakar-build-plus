@@ -15,6 +15,7 @@ import Flats from "./pages/admin/Flats";
 import AdminReports from "./pages/admin/Reports";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
+import SavedQuotes from "./pages/staff/SavedQuotes";
 import StaffReports from "./pages/staff/Reports";
 import ChangePassword from "./pages/shared/ChangePassword";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />
             <Route path="/staff/generate-quote" element={<ProtectedRoute requiredRole="staff"><GenerateQuote /></ProtectedRoute>} />
+            <Route path="/staff/saved-quotes" element={<ProtectedRoute requiredRole="staff"><SavedQuotes /></ProtectedRoute>} />
             <Route path="/staff/reports" element={<ProtectedRoute requiredRole="staff"><StaffReports /></ProtectedRoute>} />
             <Route path="/staff/change-password" element={<ProtectedRoute requiredRole="staff"><ChangePassword /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

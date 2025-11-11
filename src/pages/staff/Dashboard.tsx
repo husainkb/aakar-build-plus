@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, Home, FileText } from 'lucide-react';
+import { Building, Home, FileText, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -81,18 +81,32 @@ export default function StaffDashboard() {
             </CardContent>
           </Card>
         </div>
-  <Card className="w-full bg-card text-card-foreground">
-          <CardHeader>
-            <CardTitle>Generate Quote</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Create professional quotations for customers with all property details and charges.</p>
-            <Button onClick={() => navigate('/staff/generate-quote')}>
-              <FileText className="mr-2 h-4 w-4" />
-              Generate New Quote
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
+          <Card className="w-full bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle>Generate Quote</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">Create professional quotations for customers with all property details and charges.</p>
+              <Button onClick={() => navigate('/staff/generate-quote')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Generate New Quote
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="w-full bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle>Saved Quotes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">View and download all previously generated customer quotes.</p>
+              <Button onClick={() => navigate('/staff/saved-quotes')} variant="secondary">
+                <FolderOpen className="mr-2 h-4 w-4" />
+                View Saved Quotes
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

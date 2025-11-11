@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { z } from 'zod';
 
 interface PaymentMode {
   text: string;
@@ -70,7 +71,16 @@ interface QuoteData {
   };
   totalStatutories: number;
   grandTotal: number;
+  customerTitle: string;
+  customerName: string;
+  customerGender: string;
 }
+
+const customerSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' })
+});
 
 export default function GenerateQuote() {
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -83,6 +93,10 @@ export default function GenerateQuote() {
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [hasWings, setHasWings] = useState<boolean>(false);
   const [availableWings, setAvailableWings] = useState<string[]>([]);
+  const [customerTitle, setCustomerTitle] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
+  const [customerGender, setCustomerGender] = useState<string>('');
+  const [customerErrors, setCustomerErrors] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     fetchBuildings();
@@ -163,6 +177,27 @@ export default function GenerateQuote() {
   };
 
   const handleGenerateQuote = async () => {
+    // Validate customer details
+    const validation = customerSchema.safeParse({
+      title: customerTitle,
+      name: customerName,
+      gender: customerGender
+    });
+
+    if (!validation.success) {
+      const errors: {[key: string]: string} = {};
+      validation.error.errors.forEach(err => {
+        if (err.path[0]) {
+          errors[err.path[0].toString()] = err.message;
+        }
+      });
+      setCustomerErrors(errors);
+      toast.error('Please fill in all customer details');
+      return;
+    }
+    
+    setCustomerErrors({});
+
     if (!selectedBuilding || !selectedFlat) {
       toast.error('Please select building and flat');
       return;
@@ -191,10 +226,16 @@ export default function GenerateQuote() {
     const agreementAmount = totalArea * basicRate;
     const loanAmount = agreementAmount * 0.95;
 
-    // Statuatories calculations
+    // Statuatories calculations with gender-based stamp duty discount
     const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
     const gstTax = agreementAmount * (building.gst_tax / 100);
-    const stampDuty = agreementAmount * (building.stamp_duty / 100);
+    
+    // Apply 1% discount on stamp duty for Female customers
+    let stampDutyPercent = building.stamp_duty;
+    if (customerGender === 'Female') {
+      stampDutyPercent = Math.max(0, stampDutyPercent - 1);
+    }
+    const stampDuty = agreementAmount * (stampDutyPercent / 100);
 
     const statutories = {
       maintenance: building.maintenance,
@@ -212,7 +253,7 @@ export default function GenerateQuote() {
       electrical: building.electrical_water_charges > 0 ? building.electrical_water_charges.toString() : '0',
       registration: building.registration_charges + '%',
       gst: building.gst_tax + '%',
-      stampDuty: building.stamp_duty + '%',
+      stampDuty: stampDutyPercent + '%',
       legal: building.legal_charges > 0 ? building.legal_charges.toString() : '0',
       other: building.other_charges > 0 ? building.other_charges.toString() : '0'
     };
@@ -220,7 +261,7 @@ export default function GenerateQuote() {
     const totalStatutories = Object.values(statutories).reduce((a, b) => a + b, 0);
     const grandTotal = agreementAmount + totalStatutories;
 
-    setQuoteData({
+    const newQuoteData: QuoteData = {
       building: building.name,
       flatNo: flat.flat_no,
       wing: flat.wing || '',
@@ -233,10 +274,59 @@ export default function GenerateQuote() {
       statutories,
       statutoriesPercent,
       totalStatutories,
-      grandTotal
-    });
+      grandTotal,
+      customerTitle,
+      customerName,
+      customerGender
+    };
 
-    toast.success('Quote generated successfully!');
+    setQuoteData(newQuoteData);
+
+    // Save quote to database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to save quotes');
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('quotes').insert({
+        customer_title: customerTitle,
+        customer_name: customerName,
+        customer_gender: customerGender,
+        building_id: selectedBuilding,
+        building_name: building.name,
+        flat_id: selectedFlat,
+        flat_details: {
+          flat_no: flat.flat_no,
+          wing: flat.wing,
+          square_foot: flat.square_foot,
+          terrace_area: flat.terrace_area
+        } as any,
+        rate_per_sqft: basicRate,
+        base_amount: agreementAmount,
+        maintenance: statutories.maintenance,
+        electrical_water_charges: statutories.electrical,
+        registration_charges: statutories.registration,
+        gst_tax: statutories.gst,
+        stamp_duty: statutories.stampDuty,
+        legal_charges: statutories.legal,
+        other_charges: statutories.other,
+        total_amount: grandTotal,
+        payment_schedule: (building.payment_modes || []) as any,
+        created_by: user.id
+      });
+
+      if (insertError) {
+        console.error('Error saving quote:', insertError);
+        toast.error('Failed to save quote to database');
+      } else {
+        toast.success('Quote generated and saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving quote:', error);
+      toast.error('Failed to save quote');
+    }
   };
 
   function getLastAutoTableFinalY(doc: jsPDF): number {
@@ -275,7 +365,13 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 20;
+    currentY += 15;
+
+    // Customer Details
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
+    currentY += 15;
 
     // Area Table in Tabular Format
     autoTable(doc, {
@@ -421,7 +517,13 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 20;
+    currentY += 15;
+
+    // Customer Details
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
+    currentY += 15;
 
     // Area Table in Tabular Format
     autoTable(doc, {
@@ -592,7 +694,13 @@ export default function GenerateQuote() {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 20;
+    currentY += 15;
+
+    // Customer Details
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
+    currentY += 15;
 
     // Area Table in Tabular Format
     autoTable(doc, {
@@ -752,6 +860,55 @@ export default function GenerateQuote() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Generate Quote</h1>
           <p className="text-muted-foreground">Create professional quotations for customers.</p>
         </div>
+
+        <Card className="bg-card text-card-foreground">
+          <CardHeader className="bg-card text-card-foreground">
+            <CardTitle className="text-xl font-semibold text-card-foreground">Customer Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 bg-card text-card-foreground">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Select value={customerTitle} onValueChange={setCustomerTitle}>
+                  <SelectTrigger className={customerErrors.title ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}>
+                    <SelectValue placeholder="Select title" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    <SelectItem value="Mr.">Mr.</SelectItem>
+                    <SelectItem value="Mrs.">Mrs.</SelectItem>
+                    <SelectItem value="Ms.">Ms.</SelectItem>
+                    <SelectItem value="Dr.">Dr.</SelectItem>
+                  </SelectContent>
+                </Select>
+                {customerErrors.title && <p className="text-xs text-destructive">{customerErrors.title}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  placeholder="Enter customer name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className={customerErrors.name ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}
+                />
+                {customerErrors.name && <p className="text-xs text-destructive">{customerErrors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={customerGender} onValueChange={setCustomerGender}>
+                  <SelectTrigger className={customerErrors.gender ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female (1% stamp duty discount)</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {customerErrors.gender && <p className="text-xs text-destructive">{customerErrors.gender}</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="bg-card text-card-foreground">
           <CardHeader className="bg-card text-card-foreground">

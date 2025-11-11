@@ -151,6 +151,96 @@ export type Database = {
         }
         Relationships: []
       }
+      quotes: {
+        Row: {
+          base_amount: number
+          building_id: string
+          building_name: string
+          created_at: string
+          created_by: string
+          customer_gender: string
+          customer_name: string
+          customer_title: string
+          electrical_water_charges: number
+          flat_details: Json
+          flat_id: string
+          gst_tax: number
+          id: string
+          legal_charges: number
+          maintenance: number
+          other_charges: number
+          payment_schedule: Json | null
+          rate_per_sqft: number
+          registration_charges: number
+          stamp_duty: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          base_amount: number
+          building_id: string
+          building_name: string
+          created_at?: string
+          created_by: string
+          customer_gender: string
+          customer_name: string
+          customer_title: string
+          electrical_water_charges: number
+          flat_details: Json
+          flat_id: string
+          gst_tax: number
+          id?: string
+          legal_charges: number
+          maintenance: number
+          other_charges: number
+          payment_schedule?: Json | null
+          rate_per_sqft: number
+          registration_charges: number
+          stamp_duty: number
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          base_amount?: number
+          building_id?: string
+          building_name?: string
+          created_at?: string
+          created_by?: string
+          customer_gender?: string
+          customer_name?: string
+          customer_title?: string
+          electrical_water_charges?: number
+          flat_details?: Json
+          flat_id?: string
+          gst_tax?: number
+          id?: string
+          legal_charges?: number
+          maintenance?: number
+          other_charges?: number
+          payment_schedule?: Json | null
+          rate_per_sqft?: number
+          registration_charges?: number
+          stamp_duty?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
