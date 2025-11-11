@@ -35,6 +35,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/buildings', label: 'Buildings', icon: Building },
     { href: '/admin/flats', label: 'Flats', icon: Home },
+    { href: '/admin/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/admin/reports', label: 'Reports', icon: FileBarChart },
     { href: '/admin/change-password', label: 'Change Password', icon: Lock },
   ];
@@ -42,7 +43,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const staffLinks = [
     { href: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/staff/generate-quote', label: 'Generate Quote', icon: FileText },
-    // { href: '/staff/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
+    { href: '/staff/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/staff/reports', label: 'Reports', icon: FileBarChart },
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];

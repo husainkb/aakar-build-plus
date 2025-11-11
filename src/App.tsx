@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Buildings from "./pages/admin/Buildings";
 import Flats from "./pages/admin/Flats";
 import AdminReports from "./pages/admin/Reports";
+import AdminSavedQuotes from "./pages/admin/SavedQuotes";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
 import SavedQuotes from "./pages/staff/SavedQuotes";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
             <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
+            <Route path="/admin/saved-quotes" element={<ProtectedRoute requiredRole="admin"><AdminSavedQuotes /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
             <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />

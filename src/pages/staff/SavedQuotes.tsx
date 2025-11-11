@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -70,6 +70,27 @@ export default function SavedQuotes() {
       toast.error('Failed to load saved quotes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteQuote = async (quoteId: string) => {
+    if (!confirm('Are you sure you want to delete this quote?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .delete()
+        .eq('id', quoteId);
+
+      if (error) throw error;
+
+      toast.success('Quote deleted successfully');
+      fetchQuotes();
+    } catch (error) {
+      console.error('Error deleting quote:', error);
+      toast.error('Failed to delete quote');
     }
   };
 
@@ -260,17 +281,21 @@ export default function SavedQuotes() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Quote ID</TableHead>
                       <TableHead>Customer Name</TableHead>
                       <TableHead>Building</TableHead>
                       <TableHead>Flat No.</TableHead>
                       <TableHead>Total Amount</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {quotes.map((quote) => (
                       <TableRow key={quote.id}>
+                        <TableCell className="font-mono text-xs">
+                          {quote.id.substring(0, 8)}...
+                        </TableCell>
                         <TableCell className="font-medium">
                           {quote.customer_title} {quote.customer_name}
                         </TableCell>
@@ -284,14 +309,22 @@ export default function SavedQuotes() {
                           {new Date(quote.created_at).toLocaleDateString('en-IN')}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => handleDownloadQuote(quote)}
-                            variant="outline"
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download PDF
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              onClick={() => handleDownloadQuote(quote)}
+                              variant="outline"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleDeleteQuote(quote.id)}
+                              variant="outline"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
