@@ -33,6 +33,7 @@ interface SavedQuote {
   total_amount: number;
   payment_schedule: Array<{ text: string; value: number }>;
   created_at: string;
+  created_by_name: string;
 }
 
 export default function SavedQuotes() {
@@ -45,15 +46,25 @@ export default function SavedQuotes() {
 
   const fetchQuotes = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (quotesError) throw quotesError;
+
+      // Fetch all profiles to get staff names
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name');
+
+      if (profilesError) throw profilesError;
+
+      // Map staff names to quotes
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p.name]) || []);
 
       // Cast the data properly to handle Json types
-      const typedQuotes = (data || []).map(quote => ({
+      const typedQuotes = (quotesData || []).map(quote => ({
         ...quote,
         flat_details: quote.flat_details as {
           flat_no: number;
@@ -61,7 +72,8 @@ export default function SavedQuotes() {
           square_foot: number;
           terrace_area: number;
         },
-        payment_schedule: (quote.payment_schedule as Array<{ text: string; value: number }>) || []
+        payment_schedule: (quote.payment_schedule as Array<{ text: string; value: number }>) || [],
+        created_by_name: profilesMap.get(quote.created_by) || 'Unknown'
       }));
 
       setQuotes(typedQuotes);
@@ -285,6 +297,7 @@ export default function SavedQuotes() {
                       <TableHead>Customer Name</TableHead>
                       <TableHead>Building</TableHead>
                       <TableHead>Flat No.</TableHead>
+                      <TableHead>Created By</TableHead>
                       <TableHead>Total Amount</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -304,6 +317,7 @@ export default function SavedQuotes() {
                           {quote.flat_details.flat_no}
                           {quote.flat_details.wing ? ` (${quote.flat_details.wing})` : ''}
                         </TableCell>
+                        <TableCell>{quote.created_by_name}</TableCell>
                         <TableCell>{formatINR(quote.total_amount)}</TableCell>
                         <TableCell>
                           {new Date(quote.created_at).toLocaleDateString('en-IN')}
