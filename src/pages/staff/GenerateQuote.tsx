@@ -140,7 +140,14 @@ export default function GenerateQuote() {
   };
 
   const fetchFlats = async (buildingId: string) => {
-    const { data } = await supabase.from('flats').select('*').eq('building_id', buildingId);
+    // Only fetch non-booked (available) flats
+    const { data } = await supabase
+      .from('flats')
+      .select('*')
+      .eq('building_id', buildingId)
+      .neq('booked_status', 'booked')
+      .order('flat_no');
+    
     setFlats(data || []);
 
     // Check if building has wings
@@ -212,6 +219,18 @@ export default function GenerateQuote() {
     const flat = flats.find(f => f.id === selectedFlat);
 
     if (!building || !flat) return;
+
+    // Double-check that the flat is not booked (backend validation)
+    const { data: flatCheck } = await supabase
+      .from('flats')
+      .select('booked_status')
+      .eq('id', selectedFlat)
+      .single();
+
+    if (flatCheck?.booked_status === 'booked') {
+      toast.error('This flat is already booked and cannot be quoted.');
+      return;
+    }
 
     // Validate rate per sqft against minimum
     if (ratePerSqft < building.minimum_rate_per_sqft) {
