@@ -145,10 +145,14 @@ export default function GenerateQuote() {
       .from('flats')
       .select('*')
       .eq('building_id', buildingId)
-      .neq('booked_status', 'booked')
       .order('flat_no');
     
-    setFlats(data || []);
+    // Filter out booked flats (case-insensitive check)
+    const availableFlats = data?.filter(flat => 
+      flat.booked_status.toLowerCase() !== 'booked'
+    ) || [];
+    
+    setFlats(availableFlats);
 
     // Check if building has wings
     const wings = data?.map(f => f.wing).filter(w => w) || [];
@@ -220,14 +224,14 @@ export default function GenerateQuote() {
 
     if (!building || !flat) return;
 
-    // Double-check that the flat is not booked (backend validation)
+    // Double-check that the flat is not booked (backend validation - case insensitive)
     const { data: flatCheck } = await supabase
       .from('flats')
       .select('booked_status')
       .eq('id', selectedFlat)
       .single();
 
-    if (flatCheck?.booked_status === 'booked') {
+    if (flatCheck?.booked_status?.toLowerCase() === 'booked') {
       toast.error('This flat is already booked and cannot be quoted.');
       return;
     }
