@@ -154,8 +154,8 @@ export default function GenerateQuote() {
     
     setFlats(availableFlats);
 
-    // Check if building has wings
-    const wings = data?.map(f => f.wing).filter(w => w) || [];
+    // Check if building has wings - only from available flats
+    const wings = availableFlats?.map(f => f.wing).filter(w => w) || [];
     const uniqueWings = [...new Set(wings)].sort();
     setHasWings(uniqueWings.length > 0);
     setAvailableWings(uniqueWings);
