@@ -368,6 +368,7 @@ export default function GenerateQuote() {
 
   const handleDownloadPDF = () => {
     if (!quoteData) return;
+    console.log('quoteData: ', quoteData);
 
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
@@ -401,8 +402,8 @@ export default function GenerateQuote() {
     // Area Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
-      body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+      head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
+      body: [[quoteData.flatNo.toString(),quoteData?.wing || "" , quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
@@ -560,8 +561,8 @@ export default function GenerateQuote() {
     // Area Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
-      body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+      head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
+      body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
@@ -744,8 +745,8 @@ export default function GenerateQuote() {
     // Area Table in Tabular Format
     autoTable(doc, {
       startY: currentY,
-      head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
-      body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+      head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
+      body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
