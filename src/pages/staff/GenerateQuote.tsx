@@ -82,7 +82,11 @@ const customerSchema = z.object({
   gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' })
 });
 
-export default function GenerateQuote() {
+interface GenerateQuoteProps {
+  skipMinRateValidation?: boolean;
+}
+
+export default function GenerateQuote({ skipMinRateValidation = false }: GenerateQuoteProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<string>('');
@@ -179,6 +183,12 @@ export default function GenerateQuote() {
     const newRate = parseFloat(value);
     setRatePerSqft(newRate);
 
+    // Skip minimum rate validation for admin
+    if (skipMinRateValidation) {
+      setRateError('');
+      return;
+    }
+
     const building = buildings.find(b => b.id === selectedBuilding);
     if (building && newRate > 0 && newRate < building.minimum_rate_per_sqft) {
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
@@ -236,8 +246,8 @@ export default function GenerateQuote() {
       return;
     }
 
-    // Validate rate per sqft against minimum
-    if (ratePerSqft < building.minimum_rate_per_sqft) {
+    // Validate rate per sqft against minimum (skip for admin)
+    if (!skipMinRateValidation && ratePerSqft < building.minimum_rate_per_sqft) {
       toast.error(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
       return;
@@ -497,41 +507,164 @@ const handleDownloadPDF = () => {
   doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
   currentY += 15;
 
-  // Statuatories Section - will be black
-  checkPageBreak(80);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Statuatories', margin, currentY);
-  currentY += 10;
-
-  // Statuatories table WITH PERCENTAGE COLUMN
+  // Statuatories Section
+  checkPageBreak(100);
   autoTable(doc, {
     startY: currentY,
-    head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
+    head: [['Sr. No.', 'Statuatories', '', '', 'Amount']],
     body: [
-      [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-      [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-      [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-      [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-      [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-      [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-      [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
-      ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
+      ['1', 'Maintenance Charges', '', '', formatINR(quoteData.statutories.maintenance)],
+      ['2', 'Electrical & Water Charges', '', '', formatINR(quoteData.statutories.electrical)],
+      ['3', 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+      ['4', 'GST', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+      ['5', `Stamp Duty${quoteData.customerGender === 'Female' ? ' (1% Female Discount)' : ''}`, quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+      ['6', 'Legal Charges', '', '', formatINR(quoteData.statutories.legal)],
+      ['7', 'Other Charges', '', '', formatINR(quoteData.statutories.other)],
+      ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
     ],
     theme: 'grid',
     styles: { 
       fontSize: 8, 
       cellPadding: 2,
-      textColor: 0, // Black text
+      textColor: 0
     },
     headStyles: { 
       fillColor: [41, 128, 185], 
-      textColor: 255, // White text for header only
+      textColor: 255, 
       fontStyle: 'bold' 
     },
     bodyStyles: {
-      textColor: 0, // Black text for body
+      textColor: 0
     },
+    margin: { left: margin, right: margin },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 35 }
+    }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 15;
+
+  // Grand Total
+  checkPageBreak(30);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
+  currentY += 20;
+
+  // Terms and Conditions
+  checkPageBreak(80);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Terms and Conditions:', margin, currentY);
+  currentY += 8;
+
+  const terms = [
+    '1. This quote is valid for 15 days from the date of issue.',
+    '2. All payments must be made as per the payment schedule.',
+    '3. Registration charges are subject to government regulations.',
+    '4. Maintenance charges are for 24 months.',
+    '5. GST is applicable as per current government rates.',
+    '6. Stamp duty rates may vary based on applicable government policies.'
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  terms.forEach(term => {
+    checkPageBreak(10);
+    doc.text(term, margin, currentY);
+    currentY += 6;
+  });
+
+  // Save PDF
+  const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+  toast.success('PDF downloaded successfully!');
+};
+
+const handleShareQuote = async () => {
+  if (!quoteData) return;
+
+  // Generate PDF blob
+  const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 20;
+  let currentY = 20;
+
+  doc.setTextColor(0, 0, 0);
+
+  const checkPageBreak = (requiredSpace: number) => {
+    if (currentY + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      currentY = margin;
+      doc.setTextColor(0, 0, 0);
+      return true;
+    }
+    return false;
+  };
+
+  // Header
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Quote', 105, currentY, { align: 'center' });
+  currentY += 15;
+
+  // Customer Details
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
+  currentY += 15;
+
+  // Area Table
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
+    body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 10;
+
+  // Loan and Agreement
+  autoTable(doc, {
+    startY: currentY,
+    head: [['', 'Loan Amount', 'Agreement Amount']],
+    body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 15;
+
+  // Payment Schedule
+  checkPageBreak(100);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
+    body: [
+      ...quoteData.paymentModes.map((paymentMode, index) => [
+        (index + 1).toString(),
+        paymentMode.text,
+        `${paymentMode.value}%`,
+        '',
+        formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+      ]),
+      ['', 'OWN AMT', '', '', ''],
+      ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
     margin: { left: margin, right: margin },
     columnStyles: {
       0: { cellWidth: 15 },
@@ -543,560 +676,626 @@ const handleDownloadPDF = () => {
   });
   currentY = getLastAutoTableFinalY(doc) + 10;
 
-  // Grand Total - will be black
+  // Total Flat Amount
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
+  currentY += 15;
+
+  // Statuatories
+  checkPageBreak(100);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Sr. No.', 'Statuatories', '', '', 'Amount']],
+    body: [
+      ['1', 'Maintenance Charges', '', '', formatINR(quoteData.statutories.maintenance)],
+      ['2', 'Electrical & Water Charges', '', '', formatINR(quoteData.statutories.electrical)],
+      ['3', 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+      ['4', 'GST', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+      ['5', `Stamp Duty${quoteData.customerGender === 'Female' ? ' (1% Female Discount)' : ''}`, quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+      ['6', 'Legal Charges', '', '', formatINR(quoteData.statutories.legal)],
+      ['7', 'Other Charges', '', '', formatINR(quoteData.statutories.other)],
+      ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 35 }
+    }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 15;
+
+  // Grand Total
+  checkPageBreak(30);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
   currentY += 20;
 
-  // Check if we need a new page for terms and signature
-  checkPageBreak(50);
+  // Terms
+  checkPageBreak(80);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Terms and Conditions:', margin, currentY);
+  currentY += 8;
 
-  // Terms and Conditions on Page 2 - will be black
-  doc.setFontSize(9);
+  const terms = [
+    '1. This quote is valid for 15 days from the date of issue.',
+    '2. All payments must be made as per the payment schedule.',
+    '3. Registration charges are subject to government regulations.',
+    '4. Maintenance charges are for 24 months.',
+    '5. GST is applicable as per current government rates.',
+    '6. Stamp duty rates may vary based on applicable government policies.'
+  ];
+
   doc.setFont('helvetica', 'normal');
-  doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
-  currentY += 5;
-  doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
-  currentY += 5;
-  doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
-  currentY += 15;
+  doc.setFontSize(8);
+  terms.forEach(term => {
+    checkPageBreak(10);
+    doc.text(term, margin, currentY);
+    currentY += 6;
+  });
 
-  // Purchaser Signature - will be black
-  doc.text('Purchaser Signature', margin, currentY);
-  doc.line(margin, currentY + 2, margin + 60, currentY + 2);
+  const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
+  const pdfBlob = doc.output('blob');
+  const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-  currentY += 10;
-
-  // Add customer name under signature - will be black
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
-
-  doc.save(`Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`);
-  toast.success('PDF quote downloaded successfully!');
+  // Try Web Share API first
+  if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+    try {
+      await navigator.share({
+        files: [pdfFile],
+        title: 'Property Quote',
+        text: `Quote for ${quoteData.building} - Flat ${quoteData.flatNo}`
+      });
+      toast.success('Quote shared successfully!');
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        // Fallback to WhatsApp Web
+        const text = encodeURIComponent(`Quote for ${quoteData.building} - Flat ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+      }
+    }
+  } else {
+    // Fallback to WhatsApp Web link
+    const text = encodeURIComponent(`Quote for ${quoteData.building} - Flat ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
 };
 
-  const handleShareQuote = async () => {
-    if (!quoteData) return;
+const handleShareEmail = async () => {
+  if (!quoteData) return;
 
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
-    const margin = 20;
-    let currentY = 20;
+  // Generate PDF blob
+  const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 20;
+  let currentY = 20;
 
-    // Function to check if we need a new page
-    const checkPageBreak = (requiredSpace: number) => {
-      if (currentY + requiredSpace > pageHeight - margin) {
-        doc.addPage();
-        currentY = margin;
-        return true;
-      }
-      return false;
-    };
+  doc.setTextColor(0, 0, 0);
 
-    // Header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 15;
-
-    // Customer Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
-    currentY += 15;
-
-    // Area Table in Tabular Format
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
-      body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
-
-    // Loan and Agreement Amount Table in Tabular Format
-    autoTable(doc, {
-      startY: currentY,
-      head: [['', 'Loan Amount', 'Agreement Amount']],
-      body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 15;
-
-    // Dynamic Payment Schedule Table
-    checkPageBreak(100);
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-      body: [
-        ...quoteData.paymentModes.map((paymentMode, index) => [
-          (index + 1).toString(),
-          paymentMode.text,
-          `${paymentMode.value}%`,
-          '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
-        ]),
-        ['', 'OWN AMT', '', '', ''],
-        ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
-      ],
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 10 },
-        4: { cellWidth: 35 }
-      }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
-
-    // Total Flat Amount
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
-    currentY += 15;
-
-    // Statuatories Section
-    checkPageBreak(80);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Statuatories', margin, currentY);
-    currentY += 10;
-
-    // Statuatories table WITH PERCENTAGE COLUMN
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-      body: [
-        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
-        ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
-      ],
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 10 },
-        4: { cellWidth: 35 }
-      }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
-
-    // Grand Total
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
-    currentY += 20;
-
-    // Check if we need a new page for terms and signature
-    checkPageBreak(50);
-
-    // Terms and Conditions on Page 2
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
-    currentY += 5;
-    doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
-    currentY += 5;
-    doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
-    currentY += 15;
-
-    // Purchaser Signature
-    doc.text('Purchaser Signature', margin, currentY);
-    doc.line(margin, currentY + 2, margin + 60, currentY + 2);
-
-    currentY += 10;
-
-    // Add customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
-
-    // Get PDF as Blob
-    const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], `AakarConstruction_Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
-
-    // Prepare message
-    const wingText = quoteData.wing ? ` (${quoteData.wing})` : '';
-    const message = `Quote\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
-
-    // Mobile: Use Web Share API to share PDF directly to WhatsApp
-    if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-      try {
-        await navigator.share({
-          title: 'Quote',
-          text: message,
-          files: [pdfFile]
-        });
-        toast.success('Quote PDF shared to WhatsApp!');
-        return;
-      } catch (err) {
-        toast.error('Failed to share PDF.');
-      }
+  const checkPageBreak = (requiredSpace: number) => {
+    if (currentY + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      currentY = margin;
+      doc.setTextColor(0, 0, 0);
+      return true;
     }
-
-    // Desktop: WhatsApp Web only supports text, not file upload
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + '')}`;
-    window.open(whatsappUrl, '_blank');
-    toast.info('WhatsApp Web does not support direct PDF sharing. Please attach the downloaded PDF manually.');
+    return false;
   };
 
-  const handleShareEmail = async () => {
-    if (!quoteData) return;
+  // Header
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Quote', 105, currentY, { align: 'center' });
+  currentY += 15;
 
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
-    const margin = 20;
-    let currentY = 20;
+  // Customer Details
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
+  currentY += 15;
 
-    // Function to check if we need a new page
-    const checkPageBreak = (requiredSpace: number) => {
-      if (currentY + requiredSpace > pageHeight - margin) {
-        doc.addPage();
-        currentY = margin;
-        return true;
-      }
-      return false;
-    };
+  // Area Table
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
+    body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 10;
 
-    // Header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Quote', 105, currentY, { align: 'center' });
-    currentY += 15;
+  // Loan and Agreement
+  autoTable(doc, {
+    startY: currentY,
+    head: [['', 'Loan Amount', 'Agreement Amount']],
+    body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 15;
 
-    // Customer Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} ${quoteData.customerName} (${quoteData.customerGender})`, margin, currentY);
-    currentY += 15;
+  // Payment Schedule
+  checkPageBreak(100);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
+    body: [
+      ...quoteData.paymentModes.map((paymentMode, index) => [
+        (index + 1).toString(),
+        paymentMode.text,
+        `${paymentMode.value}%`,
+        '',
+        formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+      ]),
+      ['', 'OWN AMT', '', '', ''],
+      ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 10 },
+      4: { cellWidth: 35 }
+    }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 10;
 
-    // Area Table in Tabular Format
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
-      body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
+  // Total Flat Amount
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
+  currentY += 15;
 
-    // Loan and Agreement Amount Table in Tabular Format
-    autoTable(doc, {
-      startY: currentY,
-      head: [['', 'Loan Amount', 'Agreement Amount']],
-      body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 15;
+  // Statuatories
+  checkPageBreak(100);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Sr. No.', 'Statuatories', '', '', 'Amount']],
+    body: [
+      ['1', 'Maintenance Charges', '', '', formatINR(quoteData.statutories.maintenance)],
+      ['2', 'Electrical & Water Charges', '', '', formatINR(quoteData.statutories.electrical)],
+      ['3', 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+      ['4', 'GST', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+      ['5', `Stamp Duty${quoteData.customerGender === 'Female' ? ' (1% Female Discount)' : ''}`, quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+      ['6', 'Legal Charges', '', '', formatINR(quoteData.statutories.legal)],
+      ['7', 'Other Charges', '', '', formatINR(quoteData.statutories.other)],
+      ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { textColor: 0 },
+    margin: { left: margin, right: margin },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 35 }
+    }
+  });
+  currentY = getLastAutoTableFinalY(doc) + 15;
 
-    // Dynamic Payment Schedule Table
-    checkPageBreak(100);
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-      body: [
-        ...quoteData.paymentModes.map((paymentMode, index) => [
-          (index + 1).toString(),
-          paymentMode.text,
-          `${paymentMode.value}%`,
-          '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
-        ]),
-        ['', 'OWN AMT', '', '', ''],
-        ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
-      ],
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 10 },
-        4: { cellWidth: 35 }
-      }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
+  // Grand Total
+  checkPageBreak(30);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
+  currentY += 20;
 
-    // Total Flat Amount
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
-    currentY += 15;
+  // Terms
+  checkPageBreak(80);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Terms and Conditions:', margin, currentY);
+  currentY += 8;
 
-    // Statuatories Section
-    checkPageBreak(80);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Statuatories', margin, currentY);
-    currentY += 10;
+  const terms = [
+    '1. This quote is valid for 15 days from the date of issue.',
+    '2. All payments must be made as per the payment schedule.',
+    '3. Registration charges are subject to government regulations.',
+    '4. Maintenance charges are for 24 months.',
+    '5. GST is applicable as per current government rates.',
+    '6. Stamp duty rates may vary based on applicable government policies.'
+  ];
 
-    // Statuatories table WITH PERCENTAGE COLUMN
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-      body: [
-        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
-        ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
-      ],
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 10 },
-        4: { cellWidth: 35 }
-      }
-    });
-    currentY = getLastAutoTableFinalY(doc) + 10;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  terms.forEach(term => {
+    checkPageBreak(10);
+    doc.text(term, margin, currentY);
+    currentY += 6;
+  });
 
-    // Grand Total
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
-    currentY += 20;
+  const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
+  const pdfBlob = doc.output('blob');
+  const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Check if we need a new page for terms and signature
-    checkPageBreak(50);
-
-    // Terms and Conditions on Page 2
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
-    currentY += 5;
-    doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
-    currentY += 5;
-    doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
-    currentY += 15;
-
-    // Purchaser Signature
-    doc.text('Purchaser Signature', margin, currentY);
-    doc.line(margin, currentY + 2, margin + 60, currentY + 2);
-
-    currentY += 10;
-
-    // Add customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
-
-    // Get PDF as Blob
-    const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], `Quote_${quoteData.building}_Flat_${quoteData.flatNo}.pdf`, { type: 'application/pdf' });
-
-    // Prepare message
-    const wingText = quoteData.wing ? ` (${quoteData.wing})` : '';
-    const message = `Quote\nFlat No: ${quoteData.flatNo}${wingText}\nAgreement Amount: ${formatINR(quoteData.agreementAmount)}\nLoan Amount: ${formatINR(quoteData.loanAmount)}\nGrand Total: ${formatINR(quoteData.grandTotal)}`;
-
-    // Mobile: Use Web Share API to share PDF directly to email app
-    if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-      try {
-        await navigator.share({
-          title: 'Quote',
-          text: message,
-          files: [pdfFile]
-        });
-        toast.success('Quote PDF shared via email!');
-        return;
-      } catch (err) {
-        toast.error('Failed to share PDF.');
+  // Try Web Share API first for email
+  if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+    try {
+      await navigator.share({
+        files: [pdfFile],
+        title: 'Property Quote',
+        text: `Quote for ${quoteData.building} - Flat ${quoteData.flatNo}`
+      });
+      toast.success('Quote shared successfully!');
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        // Fallback to mailto link
+        const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
+        const body = encodeURIComponent(`Please find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF from the application to attach it to this email.`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
       }
     }
+  } else {
+    // Fallback to mailto link
+    const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
+    const body = encodeURIComponent(`Please find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF from the application to attach it to this email.`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+};
 
-    // Desktop: Open mailto link and instruct user to attach PDF manually
-    const mailtoUrl = `mailto:?subject=Quote&body=${encodeURIComponent(message + '')}`;
-    window.location.href = mailtoUrl;
-    toast.info('Email clients do not support direct PDF sharing. Please attach the downloaded PDF manually.');
-  };
-
-  const filteredFlats = hasWings
-    ? (selectedWing ? flats.filter(f => f.wing === selectedWing) : [])
+  // Get filtered flats based on wing selection
+  const filteredFlats = hasWings && selectedWing 
+    ? flats.filter(f => f.wing === selectedWing)
     : flats;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Generate Quote</h1>
-          <p className="text-muted-foreground">Create professional quotations for customers.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Generate Quote</h1>
+          <p className="text-muted-foreground">Create a new property quote for customers</p>
         </div>
 
-        <Card className="bg-card text-card-foreground">
-          <CardHeader className="bg-card text-card-foreground">
-            <CardTitle className="text-xl font-semibold text-card-foreground">Customer Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 bg-card text-card-foreground">
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Select value={customerTitle} onValueChange={setCustomerTitle}>
-                  <SelectTrigger className={customerErrors.title ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}>
-                    <SelectValue placeholder="Select title" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    <SelectItem value="Mr.">Mr.</SelectItem>
-                    <SelectItem value="Mrs.">Mrs.</SelectItem>
-                    <SelectItem value="Ms.">Ms.</SelectItem>
-                    <SelectItem value="Dr.">Dr.</SelectItem>
-                  </SelectContent>
-                </Select>
-                {customerErrors.title && <p className="text-xs text-destructive">{customerErrors.title}</p>}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Customer Details Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Customer Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="customerTitle">Title *</Label>
+                  <Select value={customerTitle} onValueChange={setCustomerTitle}>
+                    <SelectTrigger className={customerErrors.title ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select title" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mr.">Mr.</SelectItem>
+                      <SelectItem value="Mrs.">Mrs.</SelectItem>
+                      <SelectItem value="Ms.">Ms.</SelectItem>
+                      <SelectItem value="Dr.">Dr.</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customerErrors.title && (
+                    <p className="text-sm text-red-500">{customerErrors.title}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerGender">Gender *</Label>
+                  <Select value={customerGender} onValueChange={setCustomerGender}>
+                    <SelectTrigger className={customerErrors.gender ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customerErrors.gender && (
+                    <p className="text-sm text-red-500">{customerErrors.gender}</p>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label htmlFor="customerName">Customer Name *</Label>
                 <Input
-                  placeholder="Enter customer name"
+                  id="customerName"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className={customerErrors.name ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}
+                  placeholder="Enter customer name"
+                  className={customerErrors.name ? 'border-red-500' : ''}
+                  maxLength={100}
                 />
-                {customerErrors.name && <p className="text-xs text-destructive">{customerErrors.name}</p>}
+                {customerErrors.name && (
+                  <p className="text-sm text-red-500">{customerErrors.name}</p>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <Select value={customerGender} onValueChange={setCustomerGender}>
-                  <SelectTrigger className={customerErrors.gender ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female (1% stamp duty discount)</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                {customerErrors.gender && <p className="text-xs text-destructive">{customerErrors.gender}</p>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-card text-card-foreground">
-          <CardHeader className="bg-card text-card-foreground">
-            <CardTitle className="text-xl font-semibold text-card-foreground">Select Property</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 bg-card text-card-foreground">
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Property Selection Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Property Selection
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Building</Label>
+                <Label htmlFor="building">Building</Label>
                 <Select value={selectedBuilding} onValueChange={handleBuildingChange}>
-                  <SelectTrigger className="bg-background text-foreground">
-                    <SelectValue placeholder="Select building" className="placeholder:text-muted-foreground" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select building" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    {buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  <SelectContent>
+                    {buildings.map((building) => (
+                      <SelectItem key={building.id} value={building.id}>
+                        {building.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="rate">Rate / Sqft</Label>
+                <Label htmlFor="ratePerSqft">Rate per Sqft (₹)</Label>
                 <Input
-                  id="rate"
+                  id="ratePerSqft"
                   type="number"
-                  placeholder="Rate per sqft"
                   value={ratePerSqft || ''}
                   onChange={(e) => handleRateChange(e.target.value)}
-                  onBlur={(e) => handleRateChange(e.target.value)}
-                  disabled={!selectedBuilding}
-                  className={rateError ? 'border-destructive bg-background text-foreground' : 'bg-background text-foreground'}
+                  placeholder="Enter rate per sqft"
+                  className={rateError ? 'border-red-500' : ''}
                 />
-                {rateError && <p className="text-xs text-destructive">{rateError}</p>}
+                {rateError && (
+                  <p className="text-sm text-red-500">{rateError}</p>
+                )}
               </div>
+
               {hasWings && (
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Wing</Label>
-                  <Select value={selectedWing} onValueChange={setSelectedWing} disabled={!selectedBuilding}>
-                    <SelectTrigger className="bg-background text-foreground">
-                      <SelectValue placeholder="Select wing" className="placeholder:text-muted-foreground" />
+                  <Label htmlFor="wing">Wing</Label>
+                  <Select value={selectedWing} onValueChange={setSelectedWing}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select wing" />
                     </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {availableWings.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+                    <SelectContent>
+                      {availableWings.map((wing) => (
+                        <SelectItem key={wing} value={wing}>
+                          Wing {wing}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
+
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Flat</Label>
-                <Select
-                  value={selectedFlat}
+                <Label htmlFor="flat">Flat</Label>
+                <Select 
+                  value={selectedFlat} 
                   onValueChange={setSelectedFlat}
-                  disabled={!selectedBuilding || (hasWings && !selectedWing)}
+                  disabled={hasWings && !selectedWing}
                 >
-                  <SelectTrigger className="bg-background text-foreground">
-                    <SelectValue placeholder="Select flat" className="placeholder:text-muted-foreground" />
+                  <SelectTrigger>
+                    <SelectValue placeholder={hasWings && !selectedWing ? "Select wing first" : "Select flat"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    {filteredFlats.map(f => <SelectItem key={f.id} value={f.id}>Flat {f.flat_no}</SelectItem>)}
+                  <SelectContent>
+                    {filteredFlats.map((flat) => (
+                      <SelectItem key={flat.id} value={flat.id}>
+                        Flat {flat.flat_no} - {flat.square_foot} sqft
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <Button onClick={handleGenerateQuote} className="w-full sm:w-auto">Generate Quote</Button>
-          </CardContent>
-        </Card>
 
+              <Button 
+                onClick={handleGenerateQuote} 
+                className="w-full"
+                disabled={!selectedBuilding || !selectedFlat || (hasWings && !selectedWing) || !!rateError}
+              >
+                Generate Quote
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quote Preview */}
         {quoteData && (
-          <Card className="bg-card text-card-foreground">
-            <CardHeader className="bg-card text-card-foreground">
-              <CardTitle className="text-xl font-semibold text-card-foreground">Quote Preview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 bg-card text-card-foreground">
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                <div className="text-foreground"><span className="font-semibold">Building:</span> {quoteData.building}</div>
-                <div className="text-foreground"><span className="font-semibold">Flat No:</span> {quoteData.flatNo}{quoteData.wing ? ` (${quoteData.wing})` : ''}</div>
-                <div className="text-foreground"><span className="font-semibold">Square Foot:</span> {quoteData.superBuiltUp}</div>
-                <div className="text-foreground"><span className="font-semibold">Agreement Amount:</span> {formatINR(quoteData.agreementAmount)}</div>
-                <div className="text-foreground"><span className="font-semibold">Loan Amount (95%):</span> {formatINR(quoteData.loanAmount)}</div>
-                <div className="text-foreground"><span className="font-semibold">Grand Total:</span> {formatINR(quoteData.grandTotal)}</div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                <Button onClick={handleDownloadPDF} className="w-full sm:w-auto">
-                  <FileText className="mr-2 h-4 w-4" />
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Quote Preview</CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+                  <Download className="h-4 w-4 mr-2" />
                   Download PDF
                 </Button>
-                <Button onClick={handleShareQuote} variant="secondary" className="w-full sm:w-auto">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share on WhatsApp
+                <Button variant="outline" size="sm" onClick={handleShareQuote}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  WhatsApp
                 </Button>
-                <Button onClick={handleShareEmail} variant="secondary" className="w-full sm:w-auto">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share via Email
+                <Button variant="outline" size="sm" onClick={handleShareEmail}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Email
                 </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Customer Info */}
+                <div className="pb-4 border-b">
+                  <p className="text-lg font-semibold">
+                    Customer: {quoteData.customerTitle} {quoteData.customerName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Gender: {quoteData.customerGender}
+                    {quoteData.customerGender === 'Female' && (
+                      <span className="ml-2 text-green-600">(1% Stamp Duty Discount Applied)</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Property Details */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="font-semibold mb-2">Property Details</h4>
+                    <dl className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <dt>Building:</dt>
+                        <dd>{quoteData.building}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Flat No:</dt>
+                        <dd>{quoteData.flatNo}</dd>
+                      </div>
+                      {quoteData.wing && (
+                        <div className="flex justify-between">
+                          <dt>Wing:</dt>
+                          <dd>{quoteData.wing}</dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <dt>Super Built Up:</dt>
+                        <dd>{quoteData.superBuiltUp} sqft</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Terrace Area:</dt>
+                        <dd>{quoteData.terraceArea} sqft</dd>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <dt>Total Area:</dt>
+                        <dd>{quoteData.totalArea} sqft</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Amount Details</h4>
+                    <dl className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <dt>Agreement Amount:</dt>
+                        <dd>₹{quoteData.agreementAmount.toLocaleString()}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Loan Amount (95%):</dt>
+                        <dd>₹{quoteData.loanAmount.toLocaleString()}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+
+                {/* Payment Schedule */}
+                {quoteData.paymentModes.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Payment Schedule</h4>
+                    <div className="rounded-md border">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Payment Mode</th>
+                            <th className="px-4 py-2 text-right">Percentage</th>
+                            <th className="px-4 py-2 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {quoteData.paymentModes.map((mode, index) => (
+                            <tr key={index} className="border-t">
+                              <td className="px-4 py-2">{mode.text}</td>
+                              <td className="px-4 py-2 text-right">{mode.value}%</td>
+                              <td className="px-4 py-2 text-right">
+                                ₹{((quoteData.agreementAmount * mode.value) / 100).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Statutories */}
+                <div>
+                  <h4 className="font-semibold mb-2">Statutory Charges</h4>
+                  <div className="rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Charge</th>
+                          <th className="px-4 py-2 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">Maintenance</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.maintenance.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">Electrical & Water</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.electrical.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">Registration ({quoteData.statutoriesPercent.registration})</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.registration.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">GST ({quoteData.statutoriesPercent.gst})</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.gst.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">
+                            Stamp Duty ({quoteData.statutoriesPercent.stampDuty})
+                            {quoteData.customerGender === 'Female' && (
+                              <span className="text-green-600 ml-1">(1% discount)</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.stampDuty.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">Legal Charges</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.legal.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="px-4 py-2">Other Charges</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.statutories.other.toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t bg-muted font-semibold">
+                          <td className="px-4 py-2">Total Statutories</td>
+                          <td className="px-4 py-2 text-right">₹{quoteData.totalStatutories.toLocaleString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Grand Total */}
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between items-center text-xl font-bold">
+                    <span>Grand Total:</span>
+                    <span>₹{quoteData.grandTotal.toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
