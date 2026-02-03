@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, FileText, Share2 } from 'lucide-react';
+import { Download, FileText, Share2, Search, UserCheck, UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { z } from 'zod';
+import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 
 interface PaymentMode {
   text: string;
@@ -73,12 +74,14 @@ interface QuoteData {
   customerTitle: string;
   customerName: string;
   customerGender: string;
+  customerPhone: string;
 }
 
 const customerSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' })
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' }),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number must be at most 15 digits')
 });
 
 interface GenerateQuoteProps {
@@ -99,7 +102,18 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   const [customerTitle, setCustomerTitle] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
   const [customerGender, setCustomerGender] = useState<string>('');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
   const [customerErrors, setCustomerErrors] = useState<{ [key: string]: string }>({});
+
+  const {
+    isSearching,
+    foundCustomer,
+    customerSelected,
+    searchCustomerByPhone,
+    createOrUpdateCustomer,
+    selectCustomer,
+    clearCustomer
+  } = useCustomerSearch();
 
   useEffect(() => {
     fetchBuildings();
@@ -196,12 +210,61 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     }
   };
 
+  const handlePhoneSearch = async () => {
+    if (!customerPhone || customerPhone.length < 10) {
+      toast.error('Please enter a valid phone number (at least 10 digits)');
+      return;
+    }
+
+    const customer = await searchCustomerByPhone(customerPhone);
+    if (customer) {
+      toast.success('Customer found! Click to auto-populate details.');
+    } else {
+      toast.info('No customer found with this phone number. You can enter details manually.');
+    }
+  };
+
+  const handleSelectFoundCustomer = () => {
+    if (foundCustomer) {
+      // Parse customer name to extract title if present
+      const name = foundCustomer.name;
+      const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+      let extractedTitle = '';
+      let extractedName = name;
+
+      for (const prefix of titlePrefixes) {
+        if (name.startsWith(prefix + ' ')) {
+          extractedTitle = prefix;
+          extractedName = name.substring(prefix.length + 1);
+          break;
+        }
+      }
+
+      setCustomerName(extractedName || foundCustomer.name);
+      if (extractedTitle) {
+        setCustomerTitle(extractedTitle);
+      }
+      
+      selectCustomer(foundCustomer);
+      toast.success('Customer details populated!');
+    }
+  };
+
+  const handleClearCustomer = () => {
+    clearCustomer();
+    setCustomerTitle('');
+    setCustomerName('');
+    setCustomerGender('');
+    setCustomerPhone('');
+  };
+
   const handleGenerateQuote = async () => {
     // Validate customer details
     const validation = customerSchema.safeParse({
       title: customerTitle,
       name: customerName,
-      gender: customerGender
+      gender: customerGender,
+      phone: customerPhone
     });
 
     if (!validation.success) {
@@ -309,7 +372,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
       grandTotal,
       customerTitle,
       customerName,
-      customerGender
+      customerGender,
+      customerPhone
     };
 
     setQuoteData(newQuoteData);
@@ -322,7 +386,16 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
         return;
       }
 
+      // Create or get customer ID
+      const fullCustomerName = `${customerTitle} ${customerName}`.trim();
+      const customerId = await createOrUpdateCustomer(
+        customerPhone,
+        fullCustomerName,
+        '' // Email can be empty, will use placeholder
+      );
+
       const { error: insertError } = await supabase.from('quotes').insert({
+        customer_id: customerId,
         customer_title: customerTitle,
         customer_name: customerName,
         customer_gender: customerGender,
@@ -411,7 +484,10 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
-    currentY += 15;
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
+    currentY += 12;
 
     // Area Table in Tabular Format
     autoTable(doc, {
@@ -615,7 +691,10 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
-    currentY += 15;
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
+    currentY += 12;
 
     // Area Table
     autoTable(doc, {
@@ -800,7 +879,10 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
-    currentY += 15;
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
+    currentY += 12;
 
     // Area Table
     autoTable(doc, {
@@ -902,15 +984,15 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
     currentY += 25;
 
-    // Flat Booking Agreement (Same as SavedQuotes)
+    // Flat Booking Agreement
     checkPageBreak(50);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`I understand that flat No.${quoteData.flatNo} has been allotted to me and I agree to provide first`, margin, currentY);
-    currentY += 6;
+    currentY += 5;
     doc.setFont('helvetica', 'normal');
     doc.text('disbursement within 30 days from booking date. Failing to do so I agree that', margin, currentY);
-    currentY += 6;
+    currentY += 5;
     doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
     currentY += 15;
 
@@ -927,35 +1009,28 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
 
     const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
     const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Try Web Share API first for email
-    if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
-      try {
-        await navigator.share({
-          files: [pdfFile],
-          title: 'Property Quote',
-          text: `Quote for ${quoteData.building} - Flat ${quoteData.flatNo}`
-        });
-        toast.success('Quote shared successfully!');
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          // Fallback to mailto link
-          const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
-          const body = encodeURIComponent(`Please find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF from the application to attach it to this email.`);
-          window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        }
-      }
-    } else {
-      // Fallback to mailto link
-      const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
-      const body = encodeURIComponent(`Please find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF from the application to attach it to this email.`);
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    }
+    // Create a temporary download link and open email client
+    const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
+    const body = encodeURIComponent(`Dear ${quoteData.customerTitle} ${quoteData.customerName},\n\nPlease find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF attachment from the quote page.\n\nBest regards`);
+    
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    
+    // Also trigger PDF download for attachment
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Email client opened and PDF downloaded for attachment!');
   };
 
   // Get filtered flats based on wing selection
-  const filteredFlats = hasWings && selectedWing 
+  const filteredFlats = hasWings && selectedWing
     ? flats.filter(f => f.wing === selectedWing)
     : flats;
 
@@ -963,7 +1038,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Generate Quote</h1>
+          <h1 className="text-3xl font-bold">Generate Quote</h1>
           <p className="text-muted-foreground">Create a new property quote for customers</p>
         </div>
 
@@ -977,6 +1052,97 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Phone Number Search */}
+              <div className="space-y-2">
+                <Label htmlFor="customerPhone">Phone Number *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="customerPhone"
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      setCustomerPhone(value);
+                    }}
+                    placeholder="Enter phone number"
+                    className={customerErrors.phone ? 'border-red-500 flex-1' : 'flex-1'}
+                    maxLength={15}
+                    disabled={customerSelected}
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handlePhoneSearch}
+                    disabled={isSearching || customerSelected || customerPhone.length < 10}
+                  >
+                    {isSearching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {customerErrors.phone && (
+                  <p className="text-sm text-red-500">{customerErrors.phone}</p>
+                )}
+              </div>
+
+              {/* Found Customer Badge */}
+              {foundCustomer && !customerSelected && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                      <span className="text-sm text-green-700 dark:text-green-400">
+                        Customer found: <strong>{foundCustomer.name}</strong>
+                      </span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={handleSelectFoundCustomer}
+                      className="border-green-500 text-green-600 hover:bg-green-50"
+                    >
+                      Use This Customer
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Customer Badge */}
+              {customerSelected && foundCustomer && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-blue-700 dark:text-blue-400">
+                        Selected: <strong>{foundCustomer.name}</strong>
+                      </span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={handleClearCustomer}
+                      className="text-blue-600 hover:bg-blue-50"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* New Customer Badge */}
+              {!foundCustomer && customerPhone.length >= 10 && !isSearching && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm text-amber-700 dark:text-amber-400">
+                      New customer - please enter details below
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="customerTitle">Title *</Label>
@@ -1144,6 +1310,9 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                 <div className="pb-4 border-b">
                   <p className="text-lg font-semibold">
                     Customer: {quoteData.customerTitle} {quoteData.customerName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Phone: {quoteData.customerPhone}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Gender: {quoteData.customerGender}

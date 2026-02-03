@@ -285,6 +285,7 @@ export type Database = {
           created_at: string
           created_by: string
           customer_gender: string
+          customer_id: string | null
           customer_name: string
           customer_title: string
           electrical_water_charges: number
@@ -309,6 +310,7 @@ export type Database = {
           created_at?: string
           created_by: string
           customer_gender: string
+          customer_id?: string | null
           customer_name: string
           customer_title: string
           electrical_water_charges: number
@@ -333,6 +335,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           customer_gender?: string
+          customer_id?: string | null
           customer_name?: string
           customer_title?: string
           electrical_water_charges?: number
@@ -356,6 +359,13 @@ export type Database = {
             columns: ["building_id"]
             isOneToOne: false
             referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
