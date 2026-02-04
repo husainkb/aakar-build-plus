@@ -14,7 +14,6 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: any }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
-  forgotPassword: (email: string, newPassword: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -164,42 +163,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  const forgotPassword = async (email: string, newPassword: string) => {
-    try {
-      // Call secure edge function instead of using admin client
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password-direct`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ email, newPassword }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to reset password');
-      }
-
-      if (result.success) {
-        toast.success('Password updated successfully!');
-        return { error: null };
-      } else {
-        // Generic message for security (don't reveal if email exists)
-        toast.success('If an account exists, the password has been reset.');
-        return { error: null };
-      }
-    } catch (error: any) {
-      console.error('Forgot Password Error:', error.message);
-      toast.error('Failed to update password');
-      return { error };
-    }
-  };
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -211,8 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signOut,
       changePassword,
       resetPasswordForEmail,
-      updatePassword,
-      forgotPassword
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
