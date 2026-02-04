@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, FileText, Share2, Search, UserCheck, UserPlus, Loader2 } from 'lucide-react';
+import { Download, FileText, Share2, UserCheck, UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -107,13 +107,34 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
 
   const {
     isSearching,
+    matchingCustomers,
     foundCustomer,
     customerSelected,
-    searchCustomerByPhone,
+    searchCustomersByPhone,
     createOrUpdateCustomer,
     selectCustomer,
     clearCustomer
   } = useCustomerSearch();
+  
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click-away handler for customer dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+
+    if (showCustomerDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCustomerDropdown]);
 
   useEffect(() => {
     fetchBuildings();
@@ -210,44 +231,45 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     }
   };
 
-  const handlePhoneSearch = async () => {
-    if (!customerPhone || customerPhone.length < 10) {
-      toast.error('Please enter a valid phone number (at least 10 digits)');
-      return;
-    }
-
-    const customer = await searchCustomerByPhone(customerPhone);
-    if (customer) {
-      toast.success('Customer found! Click to auto-populate details.');
+  // Handle phone input change with autocomplete search
+  const handlePhoneChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, '');
+    setCustomerPhone(cleanValue);
+    
+    // Trigger autocomplete search
+    if (cleanValue.length >= 3) {
+      searchCustomersByPhone(cleanValue);
+      setShowCustomerDropdown(true);
     } else {
-      toast.info('No customer found with this phone number. You can enter details manually.');
+      setShowCustomerDropdown(false);
     }
   };
 
-  const handleSelectFoundCustomer = () => {
-    if (foundCustomer) {
-      // Parse customer name to extract title if present
-      const name = foundCustomer.name;
-      const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
-      let extractedTitle = '';
-      let extractedName = name;
+  // Handle selecting a customer from the dropdown
+  const handleSelectCustomerFromDropdown = (customer: { id: string; name: string; email: string; phone_number: string }) => {
+    // Parse customer name to extract title if present
+    const name = customer.name;
+    const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+    let extractedTitle = '';
+    let extractedName = name;
 
-      for (const prefix of titlePrefixes) {
-        if (name.startsWith(prefix + ' ')) {
-          extractedTitle = prefix;
-          extractedName = name.substring(prefix.length + 1);
-          break;
-        }
+    for (const prefix of titlePrefixes) {
+      if (name.startsWith(prefix + ' ')) {
+        extractedTitle = prefix;
+        extractedName = name.substring(prefix.length + 1);
+        break;
       }
-
-      setCustomerName(extractedName || foundCustomer.name);
-      if (extractedTitle) {
-        setCustomerTitle(extractedTitle);
-      }
-      
-      selectCustomer(foundCustomer);
-      toast.success('Customer details populated!');
     }
+
+    setCustomerName(extractedName || customer.name);
+    if (extractedTitle) {
+      setCustomerTitle(extractedTitle);
+    }
+    setCustomerPhone(customer.phone_number);
+    
+    selectCustomer(customer);
+    setShowCustomerDropdown(false);
+    toast.success('Customer details populated!');
   };
 
   const handleClearCustomer = () => {
@@ -256,6 +278,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     setCustomerName('');
     setCustomerGender('');
     setCustomerPhone('');
+    setShowCustomerDropdown(false);
   };
 
   const handleGenerateQuote = async () => {
@@ -1052,62 +1075,57 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Phone Number Search */}
-              <div className="space-y-2">
+              {/* Phone Number Search with Autocomplete */}
+              <div className="space-y-2" ref={customerDropdownRef}>
                 <Label htmlFor="customerPhone">Phone Number *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="customerPhone"
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setCustomerPhone(value);
-                    }}
-                    placeholder="Enter phone number"
-                    className={customerErrors.phone ? 'border-red-500 flex-1' : 'flex-1'}
-                    maxLength={15}
-                    disabled={customerSelected}
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handlePhoneSearch}
-                    disabled={isSearching || customerSelected || customerPhone.length < 10}
-                  >
-                    {isSearching ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <Input
+                      id="customerPhone"
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      onFocus={() => {
+                        if (matchingCustomers.length > 0) {
+                          setShowCustomerDropdown(true);
+                        }
+                      }}
+                      placeholder="Enter phone number to search"
+                      className={customerErrors.phone ? 'border-red-500 flex-1' : 'flex-1'}
+                      maxLength={15}
+                      disabled={customerSelected}
+                    />
+                    {isSearching && (
+                      <div className="flex items-center px-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
                     )}
-                  </Button>
+                  </div>
+                  
+                  {/* Customer Autocomplete Dropdown */}
+                  {showCustomerDropdown && matchingCustomers.length > 0 && !customerSelected && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border border-input rounded-md shadow-lg max-h-60 overflow-auto">
+                      {matchingCustomers.map((customer) => (
+                        <button
+                          key={customer.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground flex items-center justify-between border-b border-input last:border-b-0"
+                          onClick={() => handleSelectCustomerFromDropdown(customer)}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{customer.name}</span>
+                            <span className="text-sm text-muted-foreground">{customer.phone_number}</span>
+                          </div>
+                          <UserCheck className="h-4 w-4 text-green-600" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {customerErrors.phone && (
                   <p className="text-sm text-red-500">{customerErrors.phone}</p>
                 )}
               </div>
-
-              {/* Found Customer Badge */}
-              {foundCustomer && !customerSelected && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-4 w-4 text-green-600" />
-                      <span className="text-sm text-green-700 dark:text-green-400">
-                        Customer found: <strong>{foundCustomer.name}</strong>
-                      </span>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={handleSelectFoundCustomer}
-                      className="border-green-500 text-green-600 hover:bg-green-50"
-                    >
-                      Use This Customer
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {/* Selected Customer Badge */}
               {customerSelected && foundCustomer && (
@@ -1116,7 +1134,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                     <div className="flex items-center gap-2">
                       <UserCheck className="h-4 w-4 text-blue-600" />
                       <span className="text-sm text-blue-700 dark:text-blue-400">
-                        Selected: <strong>{foundCustomer.name}</strong>
+                        Selected: <strong>{foundCustomer.name}</strong> ({foundCustomer.phone_number})
                       </span>
                     </div>
                     <Button 
@@ -1131,8 +1149,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                 </div>
               )}
 
-              {/* New Customer Badge */}
-              {!foundCustomer && customerPhone.length >= 10 && !isSearching && (
+              {/* New Customer Badge - only show when phone is 10+ digits and no matches found */}
+              {!customerSelected && customerPhone.length >= 10 && !isSearching && matchingCustomers.length === 0 && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
                   <div className="flex items-center gap-2">
                     <UserPlus className="h-4 w-4 text-amber-600" />

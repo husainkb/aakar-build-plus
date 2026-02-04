@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,13 +18,62 @@ interface CustomerDetails {
 
 export function useCustomerSearch() {
   const [isSearching, setIsSearching] = useState(false);
-  const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null);
+  const [matchingCustomers, setMatchingCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerSelected, setCustomerSelected] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debounced search for customers by phone number (partial match)
+  const searchCustomersByPhone = useCallback(async (phoneNumber: string): Promise<void> => {
+    // Clear previous debounce
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Reset if phone is too short
+    if (!phoneNumber || phoneNumber.length < 3) {
+      setMatchingCustomers([]);
+      setSelectedCustomer(null);
+      setCustomerSelected(false);
+      return;
+    }
+
+    // Debounce the search
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        // Search for customers whose phone number starts with or contains the input
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .ilike('phone_number', `%${phoneNumber}%`)
+          .order('name')
+          .limit(10);
+
+        if (error) {
+          console.error('Error searching customers:', error);
+          toast.error('Error searching for customers');
+          return;
+        }
+
+        setMatchingCustomers(data || []);
+        
+        // If no customers found and phone is complete (10+ digits), clear selected
+        if ((!data || data.length === 0) && phoneNumber.length >= 10) {
+          setSelectedCustomer(null);
+          setCustomerSelected(false);
+        }
+      } catch (error) {
+        console.error('Error searching customers:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+  }, []);
+
+  // Search for exact phone match (for backward compatibility)
   const searchCustomerByPhone = useCallback(async (phoneNumber: string): Promise<Customer | null> => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      setFoundCustomer(null);
-      setCustomerSelected(false);
       return null;
     }
 
@@ -43,11 +92,10 @@ export function useCustomerSearch() {
       }
 
       if (data) {
-        setFoundCustomer(data);
+        setMatchingCustomers([data]);
         return data;
       } else {
-        setFoundCustomer(null);
-        setCustomerSelected(false);
+        setMatchingCustomers([]);
         return null;
       }
     } catch (error) {
@@ -109,19 +157,33 @@ export function useCustomerSearch() {
   }, []);
 
   const selectCustomer = useCallback((customer: Customer) => {
-    setFoundCustomer(customer);
+    setSelectedCustomer(customer);
     setCustomerSelected(true);
+    setMatchingCustomers([]); // Clear dropdown after selection
   }, []);
 
   const clearCustomer = useCallback(() => {
-    setFoundCustomer(null);
+    setSelectedCustomer(null);
+    setMatchingCustomers([]);
     setCustomerSelected(false);
+  }, []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, []);
 
   return {
     isSearching,
-    foundCustomer,
+    matchingCustomers,
+    selectedCustomer,
+    foundCustomer: selectedCustomer, // Alias for backward compatibility
     customerSelected,
+    searchCustomersByPhone,
     searchCustomerByPhone,
     createOrUpdateCustomer,
     selectCustomer,
