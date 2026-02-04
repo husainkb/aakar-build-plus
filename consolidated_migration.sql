@@ -80,11 +80,13 @@ CREATE TABLE IF NOT EXISTS public.customers (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone_number TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_number ON public.customers(phone_number);
+CREATE INDEX IF NOT EXISTS idx_customers_gender ON public.customers(gender);
 
 CREATE TABLE IF NOT EXISTS public.quotes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,

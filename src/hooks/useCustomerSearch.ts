@@ -7,6 +7,7 @@ interface Customer {
   name: string;
   email: string;
   phone_number: string;
+  gender?: string | null;
 }
 
 interface CustomerDetails {
@@ -109,7 +110,8 @@ export function useCustomerSearch() {
   const createOrUpdateCustomer = useCallback(async (
     phoneNumber: string,
     name: string,
-    email: string
+    email: string,
+    gender?: string | null
   ): Promise<string | null> => {
     try {
       // First try to find existing customer by phone
@@ -120,18 +122,40 @@ export function useCustomerSearch() {
         .maybeSingle();
 
       if (existing) {
-        // Customer exists, return their ID
+        // Customer exists, update with new information including gender
+        const updateData: any = {
+          name,
+          email: email || `${phoneNumber}@placeholder.com`
+        };
+        
+        // Only update gender if provided
+        if (gender) {
+          updateData.gender = gender;
+        }
+        
+        await supabase
+          .from('customers')
+          .update(updateData)
+          .eq('id', existing.id);
+          
         return existing.id;
       }
 
-      // Create new customer
+      // Create new customer with gender
+      const insertData: any = {
+        name,
+        email: email || `${phoneNumber}@placeholder.com`,
+        phone_number: phoneNumber
+      };
+      
+      // Only include gender if provided
+      if (gender) {
+        insertData.gender = gender;
+      }
+
       const { data: newCustomer, error } = await supabase
         .from('customers')
-        .insert({
-          name,
-          email: email || `${phoneNumber}@placeholder.com`, // Email is required in schema
-          phone_number: phoneNumber
-        })
+        .insert(insertData)
         .select('id')
         .single();
 

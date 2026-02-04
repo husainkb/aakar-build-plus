@@ -1,33 +1,34 @@
 -- ============================================
 -- CONSOLIDATED IDEMPOTENT MIGRATION
--- This ensures all tables, functions, policies exist properly
--- Safe to run on fresh or existing databases
+-- Safe to run on fresh Supabase projects
+-- 
+-- INSTRUCTIONS:
+-- 1. Delete all files in supabase/migrations/ folder
+-- 2. Rename this file to: 20251023000000_initial_schema.sql
+-- 3. Move it to: supabase/migrations/
+-- 4. Run: npx supabase db push
 -- ============================================
 
 -- Create enums if they don't exist
 DO $$ BEGIN
   CREATE TYPE public.app_role AS ENUM ('admin', 'staff');
-EXCEPTION
-  WHEN duplicate_object THEN null;
+EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
   CREATE TYPE public.ticket_status AS ENUM ('new', 'open', 'in_progress', 'resolved');
-EXCEPTION
-  WHEN duplicate_object THEN null;
+EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
   CREATE TYPE public.ticket_priority AS ENUM ('low', 'medium', 'high');
-EXCEPTION
-  WHEN duplicate_object THEN null;
+EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
 -- ============================================
--- ENSURE ALL TABLES EXIST
+-- TABLES (with all columns)
 -- ============================================
 
--- Profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -38,11 +39,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Buildings table (with all columns including ones added in later migrations)
 CREATE TABLE IF NOT EXISTS public.buildings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   rate_per_sqft DECIMAL(10,2) NOT NULL,
+  minimum_rate_per_sqft DECIMAL(10,2) NOT NULL DEFAULT 0,
   maintenance DECIMAL(10,2) NOT NULL DEFAULT 0,
   electrical_water_charges DECIMAL(10,2) NOT NULL DEFAULT 0,
   registration_charges DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -50,7 +51,6 @@ CREATE TABLE IF NOT EXISTS public.buildings (
   stamp_duty DECIMAL(10,2) NOT NULL DEFAULT 0,
   legal_charges DECIMAL(10,2) NOT NULL DEFAULT 0,
   other_charges DECIMAL(10,2) NOT NULL DEFAULT 0,
-  minimum_rate_per_sqft DECIMAL(10,2) NOT NULL DEFAULT 0,
   payment_modes JSONB DEFAULT '[]'::jsonb,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -58,18 +58,6 @@ CREATE TABLE IF NOT EXISTS public.buildings (
 );
 ALTER TABLE public.buildings ENABLE ROW LEVEL SECURITY;
 
--- Ensure columns exist (for existing databases)
-DO $$ BEGIN
-  ALTER TABLE public.buildings ADD COLUMN IF NOT EXISTS minimum_rate_per_sqft DECIMAL(10,2) NOT NULL DEFAULT 0;
-EXCEPTION WHEN others THEN null;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE public.buildings ADD COLUMN IF NOT EXISTS payment_modes JSONB DEFAULT '[]'::jsonb;
-EXCEPTION WHEN others THEN null;
-END $$;
-
--- Flats table
 CREATE TABLE IF NOT EXISTS public.flats (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   building_id UUID NOT NULL REFERENCES public.buildings(id) ON DELETE CASCADE,
@@ -87,19 +75,19 @@ CREATE TABLE IF NOT EXISTS public.flats (
 );
 ALTER TABLE public.flats ENABLE ROW LEVEL SECURITY;
 
--- Customers table
 CREATE TABLE IF NOT EXISTS public.customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone_number TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_number ON public.customers(phone_number);
+CREATE INDEX IF NOT EXISTS idx_customers_gender ON public.customers(gender);
 
--- Quotes table
 CREATE TABLE IF NOT EXISTS public.quotes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   customer_title TEXT NOT NULL,
@@ -128,13 +116,6 @@ CREATE TABLE IF NOT EXISTS public.quotes (
 ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_quotes_customer_id ON public.quotes(customer_id);
 
--- Ensure customer_id column exists (for existing databases)
-DO $$ BEGIN
-  ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES public.customers(id);
-EXCEPTION WHEN others THEN null;
-END $$;
-
--- Grievance tickets table
 CREATE TABLE IF NOT EXISTS public.grievance_tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_number TEXT NOT NULL,
@@ -150,7 +131,6 @@ CREATE TABLE IF NOT EXISTS public.grievance_tickets (
 );
 ALTER TABLE public.grievance_tickets ENABLE ROW LEVEL SECURITY;
 
--- Feedback table
 CREATE TABLE IF NOT EXISTS public.feedback (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID NOT NULL REFERENCES public.customers(id),
@@ -161,7 +141,6 @@ CREATE TABLE IF NOT EXISTS public.feedback (
 );
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 
--- Ticket activity log table
 CREATE TABLE IF NOT EXISTS public.ticket_activity_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_id UUID NOT NULL REFERENCES public.grievance_tickets(id),
@@ -173,7 +152,7 @@ CREATE TABLE IF NOT EXISTS public.ticket_activity_log (
 ALTER TABLE public.ticket_activity_log ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- FUNCTIONS (all with proper search_path)
+-- FUNCTIONS
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -314,86 +293,51 @@ CREATE TRIGGER trg_prevent_quote_for_booked_flats
   EXECUTE FUNCTION public.prevent_quote_for_booked_flats();
 
 -- ============================================
--- RLS POLICIES (drop all and recreate)
+-- RLS POLICIES
 -- ============================================
 
--- Profiles policies
+-- Profiles
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Authenticated users can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 
-CREATE POLICY "Users can view own profile" 
-  ON public.profiles FOR SELECT 
-  USING (auth.uid() = id);
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all profiles" 
-  ON public.profiles FOR SELECT 
-  USING (public.is_admin());
-
-CREATE POLICY "Users can update their own profile"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
-
--- Buildings policies
+-- Buildings
 DROP POLICY IF EXISTS "Anyone authenticated can view buildings" ON public.buildings;
 DROP POLICY IF EXISTS "Only admins can insert buildings" ON public.buildings;
 DROP POLICY IF EXISTS "Only admins can update buildings" ON public.buildings;
 DROP POLICY IF EXISTS "Only admins can delete buildings" ON public.buildings;
 
-CREATE POLICY "Anyone authenticated can view buildings"
-  ON public.buildings FOR SELECT
-  USING (true);
+CREATE POLICY "Anyone authenticated can view buildings" ON public.buildings FOR SELECT USING (true);
+CREATE POLICY "Only admins can insert buildings" ON public.buildings FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Only admins can update buildings" ON public.buildings FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Only admins can delete buildings" ON public.buildings FOR DELETE USING (public.is_admin());
 
-CREATE POLICY "Only admins can insert buildings"
-  ON public.buildings FOR INSERT
-  WITH CHECK (public.is_admin());
-
-CREATE POLICY "Only admins can update buildings"
-  ON public.buildings FOR UPDATE
-  USING (public.is_admin());
-
-CREATE POLICY "Only admins can delete buildings"
-  ON public.buildings FOR DELETE
-  USING (public.is_admin());
-
--- Flats policies
+-- Flats
 DROP POLICY IF EXISTS "Anyone authenticated can view flats" ON public.flats;
 DROP POLICY IF EXISTS "Only admins can insert flats" ON public.flats;
 DROP POLICY IF EXISTS "Only admins can update flats" ON public.flats;
 DROP POLICY IF EXISTS "Only admins can delete flats" ON public.flats;
 
-CREATE POLICY "Anyone authenticated can view flats"
-  ON public.flats FOR SELECT
-  USING (true);
+CREATE POLICY "Anyone authenticated can view flats" ON public.flats FOR SELECT USING (true);
+CREATE POLICY "Only admins can insert flats" ON public.flats FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Only admins can update flats" ON public.flats FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Only admins can delete flats" ON public.flats FOR DELETE USING (public.is_admin());
 
-CREATE POLICY "Only admins can insert flats"
-  ON public.flats FOR INSERT
-  WITH CHECK (public.is_admin());
-
-CREATE POLICY "Only admins can update flats"
-  ON public.flats FOR UPDATE
-  USING (public.is_admin());
-
-CREATE POLICY "Only admins can delete flats"
-  ON public.flats FOR DELETE
-  USING (public.is_admin());
-
--- Customers policies
+-- Customers
 DROP POLICY IF EXISTS "Admins and staff can view all customers" ON public.customers;
 DROP POLICY IF EXISTS "Authenticated staff can create customers" ON public.customers;
 DROP POLICY IF EXISTS "Anyone can create customer records" ON public.customers;
 
-CREATE POLICY "Admins and staff can view all customers" 
-  ON public.customers FOR SELECT 
-  USING (public.is_staff_or_admin());
+CREATE POLICY "Admins and staff can view all customers" ON public.customers FOR SELECT USING (public.is_staff_or_admin());
+CREATE POLICY "Authenticated staff can create customers" ON public.customers FOR INSERT WITH CHECK (public.is_staff_or_admin());
 
-CREATE POLICY "Authenticated staff can create customers" 
-  ON public.customers FOR INSERT 
-  WITH CHECK (public.is_staff_or_admin());
-
--- Quotes policies
+-- Quotes
 DROP POLICY IF EXISTS "Authenticated users can view quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Authenticated users can insert quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Users can update their own quotes" ON public.quotes;
@@ -401,81 +345,43 @@ DROP POLICY IF EXISTS "Admins can delete quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Staff can view their own quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Users can delete their own quotes or admins can delete any" ON public.quotes;
 
-CREATE POLICY "Authenticated users can insert quotes"
-  ON public.quotes FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "Authenticated users can insert quotes" ON public.quotes FOR INSERT WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "Staff can view their own quotes" ON public.quotes FOR SELECT USING ((auth.uid() = created_by) OR public.is_admin());
+CREATE POLICY "Users can delete their own quotes or admins can delete any" ON public.quotes FOR DELETE USING ((auth.uid() = created_by) OR public.is_admin());
 
-CREATE POLICY "Staff can view their own quotes" 
-  ON public.quotes FOR SELECT 
-  USING ((auth.uid() = created_by) OR public.is_admin());
-
-CREATE POLICY "Users can delete their own quotes or admins can delete any" 
-  ON public.quotes FOR DELETE 
-  USING ((auth.uid() = created_by) OR public.is_admin());
-
--- Grievance tickets policies
+-- Grievance tickets
 DROP POLICY IF EXISTS "Anyone can create tickets" ON public.grievance_tickets;
 DROP POLICY IF EXISTS "Authenticated users can create tickets" ON public.grievance_tickets;
 DROP POLICY IF EXISTS "Admins can update tickets" ON public.grievance_tickets;
 DROP POLICY IF EXISTS "Admins can view all tickets" ON public.grievance_tickets;
 DROP POLICY IF EXISTS "Staff can view assigned tickets" ON public.grievance_tickets;
 
-CREATE POLICY "Authenticated users can create tickets" 
-  ON public.grievance_tickets FOR INSERT 
-  WITH CHECK (true);
+CREATE POLICY "Authenticated users can create tickets" ON public.grievance_tickets FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can update tickets" ON public.grievance_tickets FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Admins can view all tickets" ON public.grievance_tickets FOR SELECT USING (public.is_admin());
+CREATE POLICY "Staff can view assigned tickets" ON public.grievance_tickets FOR SELECT USING ((assigned_staff_id = auth.uid()) OR public.is_admin());
 
-CREATE POLICY "Admins can update tickets" 
-  ON public.grievance_tickets FOR UPDATE 
-  USING (public.is_admin());
-
-CREATE POLICY "Admins can view all tickets" 
-  ON public.grievance_tickets FOR SELECT 
-  USING (public.is_admin());
-
-CREATE POLICY "Staff can view assigned tickets" 
-  ON public.grievance_tickets FOR SELECT 
-  USING ((assigned_staff_id = auth.uid()) OR public.is_admin());
-
--- Feedback policies
+-- Feedback
 DROP POLICY IF EXISTS "Anyone can create feedback" ON public.feedback;
 DROP POLICY IF EXISTS "Authenticated users can create feedback" ON public.feedback;
 DROP POLICY IF EXISTS "Admins and staff can view all feedback" ON public.feedback;
 DROP POLICY IF EXISTS "Staff and admins can create feedback" ON public.feedback;
 
-CREATE POLICY "Admins and staff can view all feedback" 
-  ON public.feedback FOR SELECT 
-  USING (public.is_staff_or_admin());
+CREATE POLICY "Admins and staff can view all feedback" ON public.feedback FOR SELECT USING (public.is_staff_or_admin());
+CREATE POLICY "Staff and admins can create feedback" ON public.feedback FOR INSERT WITH CHECK (public.is_staff_or_admin());
 
-CREATE POLICY "Staff and admins can create feedback" 
-  ON public.feedback FOR INSERT 
-  WITH CHECK (public.is_staff_or_admin());
-
--- Ticket activity log policies
+-- Ticket activity log
 DROP POLICY IF EXISTS "Admins and assigned staff can view activity logs" ON public.ticket_activity_log;
 DROP POLICY IF EXISTS "Admins and staff can create activity logs" ON public.ticket_activity_log;
 
-CREATE POLICY "Admins and assigned staff can view activity logs" 
-  ON public.ticket_activity_log FOR SELECT 
-  USING (
-    EXISTS (
-      SELECT 1 FROM grievance_tickets
-      WHERE grievance_tickets.id = ticket_activity_log.ticket_id
-      AND (grievance_tickets.assigned_staff_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Admins and staff can create activity logs" 
-  ON public.ticket_activity_log FOR INSERT 
-  WITH CHECK (public.is_staff_or_admin());
+CREATE POLICY "Admins and assigned staff can view activity logs" ON public.ticket_activity_log FOR SELECT 
+  USING (EXISTS (SELECT 1 FROM grievance_tickets WHERE grievance_tickets.id = ticket_activity_log.ticket_id AND (grievance_tickets.assigned_staff_id = auth.uid() OR public.is_admin())));
+CREATE POLICY "Admins and staff can create activity logs" ON public.ticket_activity_log FOR INSERT WITH CHECK (public.is_staff_or_admin());
 
 -- ============================================
--- VIEW for public profile data
+-- VIEW
 -- ============================================
 
 DROP VIEW IF EXISTS public.profiles_public;
-CREATE VIEW public.profiles_public
-WITH (security_invoker = on) AS
-  SELECT id, name
-  FROM public.profiles;
-
+CREATE VIEW public.profiles_public WITH (security_invoker = on) AS SELECT id, name FROM public.profiles;
 GRANT SELECT ON public.profiles_public TO authenticated;

@@ -246,7 +246,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   };
 
   // Handle selecting a customer from the dropdown
-  const handleSelectCustomerFromDropdown = (customer: { id: string; name: string; email: string; phone_number: string }) => {
+  const handleSelectCustomerFromDropdown = (customer: { id: string; name: string; email: string; phone_number: string; gender?: string | null }) => {
     // Parse customer name to extract title if present
     const name = customer.name;
     const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
@@ -266,6 +266,11 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
       setCustomerTitle(extractedTitle);
     }
     setCustomerPhone(customer.phone_number);
+    
+    // Populate gender if available
+    if (customer.gender) {
+      setCustomerGender(customer.gender);
+    }
     
     selectCustomer(customer);
     setShowCustomerDropdown(false);
@@ -414,7 +419,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
       const customerId = await createOrUpdateCustomer(
         customerPhone,
         fullCustomerName,
-        '' // Email can be empty, will use placeholder
+        '', // Email can be empty, will use placeholder
+        customerGender // Pass gender to save in customers table
       );
 
       const { error: insertError } = await supabase.from('quotes').insert({
