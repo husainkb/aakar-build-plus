@@ -460,6 +460,8 @@ export type Database = {
     }
     Functions: {
       generate_ticket_number: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      is_staff_or_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "staff"
