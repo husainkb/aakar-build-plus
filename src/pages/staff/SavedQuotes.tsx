@@ -61,9 +61,9 @@ export default function SavedQuotes() {
 
       if (quotesError) throw quotesError;
 
-      // Fetch all profiles to get staff names
+      // Fetch staff names from the restricted profiles_public view
       const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, name');
 
       if (profilesError) throw profilesError;
