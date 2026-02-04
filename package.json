@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:dev":"PORT=3009 vite build --mode development",
+    "build:dev": "PORT=3009 vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview --port 3009"
@@ -48,7 +48,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
-    "jspdf": "^3.0.3",
+    "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
