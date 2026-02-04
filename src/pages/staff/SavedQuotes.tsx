@@ -134,8 +134,8 @@ export default function SavedQuotes() {
         const margin = 20;
         let currentY = 20;
     
-        // Normalize incoming quote to the shape expected by the PDF generation code
-        const quoteData = {
+        // Normalize incoming quote to the shape expected by the     generation code
+        const quoteData = { 
           customerTitle: quote.customer_title || '',
           customerName: quote.customer_name || '',
           flatNo: quote.flat_details?.flat_no || 0,
