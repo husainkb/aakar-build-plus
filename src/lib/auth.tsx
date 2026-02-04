@@ -1,14 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, createClient } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-
-// ✅ Admin Supabase Client (for password reset by email)
-const supabaseAdmin = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY!
-);
 
 interface AuthContextType {
   user: User | null;
@@ -16,7 +9,7 @@ interface AuthContextType {
   userRole: 'admin' | 'staff' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, name: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: any }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: any }>;
@@ -92,14 +85,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, name: string, role: 'admin' | 'staff') => {
+  const signUp = async (email: string, password: string, name: string) => {
+    // Always assign 'staff' role - admin role must be assigned by existing admin
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           name,
-          role
+          role: 'staff' // Always default to staff for security
         }
       }
     });
@@ -172,25 +166,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const forgotPassword = async (email: string, newPassword: string) => {
     try {
-      // Fetch all users and match by email
-      const { data: users, error: fetchError } = await supabaseAdmin.auth.admin.listUsers();
-      if (fetchError) throw fetchError;
+      // Call secure edge function instead of using admin client
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password-direct`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ email, newPassword }),
+        }
+      );
 
-      const user = users?.users?.find((u: any) => u.email === email);
-      if (!user) {
-        toast.error('No user found with that email');
-        return { error: { message: 'User not found' } };
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reset password');
       }
 
-      // Update the user’s password using admin privileges
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-        password: newPassword,
-      });
-
-      if (updateError) throw updateError;
-
-      toast.success('Password updated successfully!');
-      return { error: null };
+      if (result.success) {
+        toast.success('Password updated successfully!');
+        return { error: null };
+      } else {
+        // Generic message for security (don't reveal if email exists)
+        toast.success('If an account exists, the password has been reset.');
+        return { error: null };
+      }
     } catch (error: any) {
       console.error('Forgot Password Error:', error.message);
       toast.error('Failed to update password');
