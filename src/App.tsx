@@ -15,6 +15,9 @@ import Flats from "./pages/admin/Flats";
 import AdminReports from "./pages/admin/Reports";
 import AdminSavedQuotes from "./pages/admin/SavedQuotes";
 import AdminGenerateQuote from "./pages/admin/GenerateQuote";
+import StaffManagement from "./pages/admin/StaffManagement";
+import ManagerDashboard from "./pages/manager/Dashboard";
+import ManagerSavedQuotes from "./pages/manager/SavedQuotes";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
 import SavedQuotes from "./pages/staff/SavedQuotes";
@@ -38,13 +41,20 @@ const App = () => (
             <Route path="/auth/signup" element={<Signup />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
+            {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
             <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
             <Route path="/admin/generate-quote" element={<ProtectedRoute requiredRole="admin"><AdminGenerateQuote /></ProtectedRoute>} />
             <Route path="/admin/saved-quotes" element={<ProtectedRoute requiredRole="admin"><AdminSavedQuotes /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
+            <Route path="/admin/staff-management" element={<ProtectedRoute requiredRole="admin"><StaffManagement /></ProtectedRoute>} />
             <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
+            {/* Manager Routes */}
+            <Route path="/manager/dashboard" element={<ProtectedRoute requiredRole="manager"><ManagerDashboard /></ProtectedRoute>} />
+            <Route path="/manager/saved-quotes" element={<ProtectedRoute requiredRole="manager"><ManagerSavedQuotes /></ProtectedRoute>} />
+            <Route path="/manager/change-password" element={<ProtectedRoute requiredRole="manager"><ChangePassword /></ProtectedRoute>} />
+            {/* Staff Routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />
             <Route path="/staff/generate-quote" element={<ProtectedRoute requiredRole="staff"><GenerateQuote /></ProtectedRoute>} />
             <Route path="/staff/saved-quotes" element={<ProtectedRoute requiredRole="staff"><SavedQuotes /></ProtectedRoute>} />

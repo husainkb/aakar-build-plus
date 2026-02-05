@@ -407,6 +407,30 @@ export type Database = {
           },
         ]
       }
+      staff_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          manager_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id?: string
+          staff_id?: string
+        }
+        Relationships: []
+      }
       ticket_activity_log: {
         Row: {
           activity_type: string
@@ -476,11 +500,17 @@ export type Database = {
     }
     Functions: {
       generate_ticket_number: { Args: never; Returns: string }
+      get_assigned_staff_ids: {
+        Args: { manager_uuid: string }
+        Returns: string[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      is_admin_or_manager: { Args: never; Returns: boolean }
+      is_manager: { Args: never; Returns: boolean }
       is_staff_or_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "manager"
       ticket_priority: "low" | "medium" | "high"
       ticket_status: "new" | "open" | "in_progress" | "resolved"
     }
@@ -610,7 +640,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "manager"],
       ticket_priority: ["low", "medium", "high"],
       ticket_status: ["new", "open", "in_progress", "resolved"],
     },
