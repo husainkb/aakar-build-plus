@@ -149,7 +149,9 @@ export type Database = {
       }
       flats: {
         Row: {
+          booked_customer_id: string | null
           booked_status: string
+          booking_rate_per_sqft: number | null
           building_id: string
           created_at: string
           created_by: string | null
@@ -164,7 +166,9 @@ export type Database = {
           wing: string | null
         }
         Insert: {
+          booked_customer_id?: string | null
           booked_status: string
+          booking_rate_per_sqft?: number | null
           building_id: string
           created_at?: string
           created_by?: string | null
@@ -179,7 +183,9 @@ export type Database = {
           wing?: string | null
         }
         Update: {
+          booked_customer_id?: string | null
           booked_status?: string
+          booking_rate_per_sqft?: number | null
           building_id?: string
           created_at?: string
           created_by?: string | null
@@ -194,6 +200,13 @@ export type Database = {
           wing?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "flats_booked_customer_id_fkey"
+            columns: ["booked_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "flats_building_id_fkey"
             columns: ["building_id"]

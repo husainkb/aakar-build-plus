@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Copy, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, Search, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCustomerSearch } from '@/hooks/useCustomerSearch';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Building {
   id: string;
@@ -29,6 +32,38 @@ interface Flat {
   flat_experience: string;
   terrace_area: number;
   buildings?: { name: string };
+  booked_customer_id?: string | null;
+  booking_rate_per_sqft?: number | null;
+  customers?: {
+    id: string;
+    name: string;
+    phone_number: string;
+    email: string;
+    gender?: string | null;
+  } | null;
+}
+
+interface BuildingDetails {
+  id: string;
+  name: string;
+  rate_per_sqft: number;
+  minimum_rate_per_sqft: number;
+  maintenance: number;
+  electrical_water_charges: number;
+  registration_charges: number;
+  gst_tax: number;
+  stamp_duty: number;
+  legal_charges: number;
+  other_charges: number;
+  payment_modes?: { text: string; value: number }[];
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  phone_number: string;
+  email: string;
+  gender?: string | null;
 }
 
 export default function Flats() {
@@ -52,10 +87,50 @@ export default function Flats() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Customer details state for booked flats
+  const [customerTitle, setCustomerTitle] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerGender, setCustomerGender] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+  
+  const {
+    isSearching,
+    matchingCustomers,
+    searchCustomersByPhone,
+    createOrUpdateCustomer,
+    selectCustomer,
+    clearCustomer
+  } = useCustomerSearch();
+
+  // Building details cache for PDF generation
+  const [buildingDetailsCache, setBuildingDetailsCache] = useState<Record<string, BuildingDetails>>({});
+  const [customersCache, setCustomersCache] = useState<Record<string, Customer>>({});
+  const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
+
   useEffect(() => {
     fetchBuildings();
     fetchFlats();
   }, []);
+
+  // Click-away handler for customer dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+
+    if (showCustomerDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCustomerDropdown]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -83,10 +158,62 @@ export default function Flats() {
     }
   };
 
+  const fetchBuildingDetails = async (buildingId: string): Promise<BuildingDetails | null> => {
+    if (buildingDetailsCache[buildingId]) {
+      return buildingDetailsCache[buildingId];
+    }
+    
+    const { data, error } = await supabase
+      .from('buildings')
+      .select('*')
+      .eq('id', buildingId)
+      .single();
+    
+    if (error || !data) return null;
+    
+    let payment_modes: { text: string; value: number }[] = [];
+    try {
+      if ((data as any).payment_modes) {
+        if (typeof (data as any).payment_modes === 'string') {
+          payment_modes = JSON.parse((data as any).payment_modes);
+        } else {
+          payment_modes = (data as any).payment_modes;
+        }
+      }
+    } catch (e) {
+      payment_modes = [];
+    }
+    
+    const buildingDetails: BuildingDetails = {
+      ...data,
+      payment_modes
+    };
+    
+    setBuildingDetailsCache(prev => ({ ...prev, [buildingId]: buildingDetails }));
+    return buildingDetails;
+  };
+
+  const fetchCustomerDetails = async (customerId: string): Promise<Customer | null> => {
+    if (customersCache[customerId]) {
+      return customersCache[customerId];
+    }
+    
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .single();
+    
+    if (error || !data) return null;
+    
+    setCustomersCache(prev => ({ ...prev, [customerId]: data }));
+    return data;
+  };
+
   const fetchFlats = async () => {
     const { data, error } = await supabase
       .from('flats')
-      .select('*, buildings(name)')
+      .select('*, buildings(name), customers:booked_customer_id(id, name, phone_number, email, gender)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -136,6 +263,26 @@ export default function Flats() {
       newErrors.flat_experience = 'Flat Experience is required';
     }
 
+    // Validate customer details if status is Booked
+    if (formData.booked_status === 'Booked') {
+      if (!customerTitle.trim()) {
+        newErrors.customerTitle = 'Title is required for booked flats';
+      }
+      if (!customerName.trim()) {
+        newErrors.customerName = 'Customer name is required for booked flats';
+      }
+      if (!customerGender) {
+        newErrors.customerGender = 'Gender is required for booked flats';
+      }
+      if (!customerPhone.trim() || customerPhone.length < 10) {
+        newErrors.customerPhone = 'Valid phone number is required for booked flats';
+      }
+      const rate = parseFloat(bookingRatePerSqft);
+      if (!bookingRatePerSqft || isNaN(rate) || rate <= 0) {
+        newErrors.bookingRatePerSqft = 'Booking rate per sqft is required';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -150,16 +297,37 @@ export default function Flats() {
 
     setLoading(true);
 
-    const flatData = {
+    let customerId: string | null = null;
+    
+    // If booking, create/update customer first
+    if (formData.booked_status === 'Booked') {
+      try {
+        const fullName = `${customerTitle} ${customerName}`.trim();
+        customerId = await createOrUpdateCustomer(
+          customerPhone,
+          fullName,
+          '',
+          customerGender
+        );
+      } catch (error) {
+        toast.error('Failed to save customer details');
+        setLoading(false);
+        return;
+      }
+    }
+
+    const flatData: any = {
       building_id: formData.building_id,
       flat_no: parseInt(formData.flat_no),
-      wing: formData.wing.trim() || null, // Optional: allow null for standalone buildings
+      wing: formData.wing.trim() || null,
       floor: parseInt(formData.floor),
       square_foot: parseFloat(formData.square_foot),
       type: formData.type.trim(),
-      booked_status: formData.booked_status, // must be 'Booked' or 'Not Booked'
+      booked_status: formData.booked_status,
       flat_experience: formData.flat_experience,
       terrace_area: parseFloat(formData.terrace_area) || 0,
+      booked_customer_id: formData.booked_status === 'Booked' ? customerId : null,
+      booking_rate_per_sqft: formData.booked_status === 'Booked' ? parseFloat(bookingRatePerSqft) : null,
     };
 
     if (editingFlat) {
@@ -207,6 +375,31 @@ export default function Flats() {
       flat_experience: flat.flat_experience || 'Good',
       terrace_area: flat.terrace_area?.toString() || '0',
     });
+    
+    // Load customer details if flat is booked
+    if (flat.booked_status === 'Booked' && flat.customers) {
+      const customer = flat.customers;
+      const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+      let extractedTitle = '';
+      let extractedName = customer.name || '';
+      
+      for (const prefix of titlePrefixes) {
+        if (customer.name?.startsWith(prefix + ' ')) {
+          extractedTitle = prefix;
+          extractedName = customer.name.substring(prefix.length + 1);
+          break;
+        }
+      }
+      
+      setCustomerTitle(extractedTitle);
+      setCustomerName(extractedName);
+      setCustomerGender(customer.gender || '');
+      setCustomerPhone(customer.phone_number || '');
+      setBookingRatePerSqft(flat.booking_rate_per_sqft?.toString() || '');
+    } else {
+      resetCustomerFields();
+    }
+    
     setErrors({});
     setDialogOpen(true);
   };
@@ -237,12 +430,23 @@ export default function Flats() {
       floor: flat.floor.toString(),
       square_foot: flat.square_foot.toString(),
       type: flat.type,
-      booked_status: flat.booked_status,
+      booked_status: 'Not Booked',
       flat_experience: flat.flat_experience || 'Good',
       terrace_area: flat.terrace_area?.toString() || '0',
     });
+    resetCustomerFields();
     setErrors({});
     setDialogOpen(true);
+  };
+
+  const resetCustomerFields = () => {
+    setCustomerTitle('');
+    setCustomerName('');
+    setCustomerGender('');
+    setCustomerPhone('');
+    setBookingRatePerSqft('');
+    clearCustomer();
+    setShowCustomerDropdown(false);
   };
 
   const resetForm = () => {
@@ -253,12 +457,250 @@ export default function Flats() {
       floor: '',
       square_foot: '',
       type: '',
-      booked_status: 'Not Booked', // default value matches DB constraint
+      booked_status: 'Not Booked',
       flat_experience: 'Good',
       terrace_area: '0',
     });
     setEditingFlat(null);
     setErrors({});
+    resetCustomerFields();
+  };
+
+  // Handle phone input change with autocomplete search
+  const handlePhoneChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, '');
+    setCustomerPhone(cleanValue);
+    
+    if (cleanValue.length >= 3) {
+      searchCustomersByPhone(cleanValue);
+      setShowCustomerDropdown(true);
+    } else {
+      setShowCustomerDropdown(false);
+    }
+  };
+
+  // Handle selecting a customer from the dropdown
+  const handleSelectCustomerFromDropdown = (customer: Customer) => {
+    const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+    let extractedTitle = '';
+    let extractedName = customer.name;
+
+    for (const prefix of titlePrefixes) {
+      if (customer.name.startsWith(prefix + ' ')) {
+        extractedTitle = prefix;
+        extractedName = customer.name.substring(prefix.length + 1);
+        break;
+      }
+    }
+
+    setCustomerName(extractedName);
+    if (extractedTitle) {
+      setCustomerTitle(extractedTitle);
+    }
+    setCustomerPhone(customer.phone_number);
+    if (customer.gender) {
+      setCustomerGender(customer.gender);
+    }
+    
+    selectCustomer(customer);
+    setShowCustomerDropdown(false);
+    toast.success('Customer details populated!');
+  };
+
+  // Download Quote PDF for booked flat
+  const handleDownloadQuote = async (flat: Flat) => {
+    if (!flat.booked_customer_id || !flat.booking_rate_per_sqft) {
+      toast.error('Customer or booking rate information missing');
+      return;
+    }
+
+    setDownloadingQuote(flat.id);
+
+    try {
+      const building = await fetchBuildingDetails(flat.building_id);
+      const customer = await fetchCustomerDetails(flat.booked_customer_id);
+
+      if (!building || !customer) {
+        toast.error('Failed to fetch building or customer details');
+        setDownloadingQuote(null);
+        return;
+      }
+
+      const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+      let customerTitle = '';
+      let customerName = customer.name;
+      for (const prefix of titlePrefixes) {
+        if (customer.name.startsWith(prefix + ' ')) {
+          customerTitle = prefix;
+          customerName = customer.name.substring(prefix.length + 1);
+          break;
+        }
+      }
+
+      const totalArea = flat.square_foot + (flat.terrace_area || 0);
+      const basicRate = flat.booking_rate_per_sqft;
+      const agreementAmount = totalArea * basicRate;
+      const loanAmount = agreementAmount * 0.95;
+
+      const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
+      const gstTax = agreementAmount * (building.gst_tax / 100);
+      
+      let stampDutyPercent = building.stamp_duty;
+      if (customer.gender === 'Female') {
+        stampDutyPercent = Math.max(0, stampDutyPercent - 1);
+      }
+      const stampDuty = agreementAmount * (stampDutyPercent / 100);
+
+      const statutories = {
+        maintenance: building.maintenance,
+        electrical: building.electrical_water_charges,
+        registration: registrationCharges,
+        gst: gstTax,
+        stampDuty: stampDuty,
+        legal: building.legal_charges,
+        other: building.other_charges
+      };
+
+      const totalStatutories = Object.values(statutories).reduce((a, b) => a + b, 0);
+      const grandTotal = agreementAmount + totalStatutories;
+
+      const doc = new jsPDF();
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 20;
+      let currentY = 20;
+
+      doc.setTextColor(0, 0, 0);
+
+      const checkPageBreak = (requiredSpace: number) => {
+        if (currentY + requiredSpace > pageHeight - margin) {
+          doc.addPage();
+          currentY = margin;
+          doc.setTextColor(0, 0, 0);
+          return true;
+        }
+        return false;
+      };
+
+      const formatINR = (value: number): string => {
+        if (!value || isNaN(value)) return 'Rs. 0';
+        return 'Rs. ' + value.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        });
+      };
+
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('QUOTATION', 105, currentY, { align: 'center' });
+      currentY += 15;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const greeting = customer.gender === 'Male' ? 'Dear Sir,' : customer.gender === 'Female' ? 'Dear Madam,' : 'Dear Sir/Madam,';
+      doc.text(greeting, margin, currentY);
+      currentY += 8;
+
+      doc.text(`${customerTitle} ${customerName}`, margin, currentY);
+      currentY += 12;
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Flat Details', 'Value']],
+        body: [
+          ['Flat No', `${flat.wing ? flat.wing + '-' : ''}${flat.flat_no}`],
+          ['Floor', flat.floor.toString()],
+          ['Type', flat.type],
+          ['Super Built-up Area', `${flat.square_foot} sq.ft`],
+          ['Terrace Area', `${flat.terrace_area || 0} sq.ft`],
+          ['Total Area', `${totalArea} sq.ft`],
+          ['Rate per sq.ft', formatINR(basicRate)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [66, 66, 66] },
+        margin: { left: margin, right: margin },
+      });
+
+      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 60;
+      checkPageBreak(80);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Amount Details', 'Amount']],
+        body: [
+          ['Agreement Amount', formatINR(agreementAmount)],
+          ['Estimated Loan Amount (95%)', formatINR(loanAmount)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [66, 66, 66] },
+        margin: { left: margin, right: margin },
+      });
+
+      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 30;
+      checkPageBreak(100);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Statutory Charges', 'Amount']],
+        body: [
+          ['Maintenance', formatINR(statutories.maintenance)],
+          ['Electrical & Water Charges', formatINR(statutories.electrical)],
+          ['Registration Charges', formatINR(statutories.registration)],
+          ['GST', formatINR(statutories.gst)],
+          ['Stamp Duty' + (customer.gender === 'Female' ? ' (1% Female Discount)' : ''), formatINR(statutories.stampDuty)],
+          ['Legal Charges', formatINR(statutories.legal)],
+          ['Other Charges', formatINR(statutories.other)],
+          ['Total Statutory Charges', formatINR(totalStatutories)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [66, 66, 66] },
+        margin: { left: margin, right: margin },
+      });
+
+      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 80;
+      checkPageBreak(40);
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total Flat Amount: ${formatINR(grandTotal)}`, margin, currentY);
+      currentY += 20;
+
+      if (building.payment_modes && building.payment_modes.length > 0) {
+        checkPageBreak(60);
+        
+        const paymentBody = building.payment_modes.map(mode => [
+          mode.text,
+          `${mode.value}%`,
+          formatINR(agreementAmount * (mode.value / 100))
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [['Payment Schedule', 'Percentage', 'Amount']],
+          body: paymentBody,
+          theme: 'grid',
+          headStyles: { fillColor: [66, 66, 66] },
+          margin: { left: margin, right: margin },
+        });
+
+        currentY = (doc as any).lastAutoTable?.finalY + 15 || currentY + 50;
+      }
+
+      checkPageBreak(50);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      currentY += 10;
+      doc.text('Customer Signature: ___________________', margin, currentY);
+      doc.text('Date: ___________________', 120, currentY);
+
+      const fileName = `Quote_${building.name}_${flat.wing ? flat.wing + '-' : ''}${flat.flat_no}.pdf`;
+      doc.save(fileName);
+      toast.success('Quote downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating quote:', error);
+      toast.error('Failed to generate quote');
+    } finally {
+      setDownloadingQuote(null);
+    }
   };
 
   return (
@@ -388,6 +830,121 @@ export default function Flats() {
                     </Select>
                     {errors.booked_status && <p className="text-xs text-destructive">{errors.booked_status}</p>}
                   </div>
+                  
+                  {/* Customer Details Section - Only shown when Booked */}
+                  {formData.booked_status === 'Booked' && (
+                    <>
+                      <div className="sm:col-span-2 pt-4 border-t">
+                        <h3 className="font-semibold text-foreground mb-4">Customer Details</h3>
+                      </div>
+                      
+                      {/* Phone Number with Autocomplete */}
+                      <div className="space-y-2 sm:col-span-2 relative" ref={customerDropdownRef}>
+                        <Label htmlFor="customerPhone" className="text-muted-foreground">Phone Number *</Label>
+                        <div className="relative">
+                          <Input
+                            id="customerPhone"
+                            type="tel"
+                            value={customerPhone}
+                            onChange={(e) => handlePhoneChange(e.target.value)}
+                            className={errors.customerPhone ? 'border-destructive' : ''}
+                            placeholder="Enter 10-digit phone number"
+                            maxLength={15}
+                          />
+                          {isSearching && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        {errors.customerPhone && <p className="text-xs text-destructive">{errors.customerPhone}</p>}
+                        
+                        {/* Customer Dropdown */}
+                        {showCustomerDropdown && matchingCustomers.length > 0 && (
+                          <div className="absolute z-50 w-full bg-popover border rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto">
+                            {matchingCustomers.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="w-full px-3 py-2 text-left hover:bg-accent flex justify-between items-center"
+                                onClick={() => handleSelectCustomerFromDropdown(c)}
+                              >
+                                <span className="font-medium">{c.name}</span>
+                                <span className="text-muted-foreground text-sm">{c.phone_number}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {showCustomerDropdown && customerPhone.length === 10 && matchingCustomers.length === 0 && !isSearching && (
+                          <p className="text-xs text-muted-foreground mt-1">New customer - details will be saved</p>
+                        )}
+                      </div>
+                      
+                      {/* Title */}
+                      <div className="space-y-2">
+                        <Label htmlFor="customerTitle" className="text-muted-foreground">Title *</Label>
+                        <Select value={customerTitle} onValueChange={setCustomerTitle}>
+                          <SelectTrigger className={errors.customerTitle ? 'border-destructive' : ''}>
+                            <SelectValue placeholder="Select title" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Mr.">Mr.</SelectItem>
+                            <SelectItem value="Mrs.">Mrs.</SelectItem>
+                            <SelectItem value="Ms.">Ms.</SelectItem>
+                            <SelectItem value="Dr.">Dr.</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.customerTitle && <p className="text-xs text-destructive">{errors.customerTitle}</p>}
+                      </div>
+                      
+                      {/* Customer Name */}
+                      <div className="space-y-2">
+                        <Label htmlFor="customerName" className="text-muted-foreground">Customer Name *</Label>
+                        <Input
+                          id="customerName"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className={errors.customerName ? 'border-destructive' : ''}
+                          placeholder="Enter customer name"
+                        />
+                        {errors.customerName && <p className="text-xs text-destructive">{errors.customerName}</p>}
+                      </div>
+                      
+                      {/* Gender */}
+                      <div className="space-y-2">
+                        <Label htmlFor="customerGender" className="text-muted-foreground">Gender *</Label>
+                        <Select value={customerGender} onValueChange={setCustomerGender}>
+                          <SelectTrigger className={errors.customerGender ? 'border-destructive' : ''}>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.customerGender && <p className="text-xs text-destructive">{errors.customerGender}</p>}
+                      </div>
+                      
+                      {/* Booking Rate per Sqft */}
+                      <div className="space-y-2">
+                        <Label htmlFor="bookingRatePerSqft" className="text-muted-foreground">Booking Rate per Sqft *</Label>
+                        <Input
+                          id="bookingRatePerSqft"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={bookingRatePerSqft}
+                          onChange={(e) => setBookingRatePerSqft(e.target.value)}
+                          className={errors.bookingRatePerSqft ? 'border-destructive' : ''}
+                          placeholder="Enter rate per sqft"
+                        />
+                        {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="flat_experience" className="text-muted-foreground">Flat Experience *</Label>
                     <Select value={formData.flat_experience} onValueChange={(value) => setFormData({ ...formData, flat_experience: value })}>
@@ -469,6 +1026,21 @@ export default function Flats() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
+                          {flat.booked_status === 'Booked' && flat.booked_customer_id && flat.booking_rate_per_sqft && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDownloadQuote(flat)}
+                              disabled={downloadingQuote === flat.id}
+                              title="Download Quote"
+                            >
+                              {downloadingQuote === flat.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(flat)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
