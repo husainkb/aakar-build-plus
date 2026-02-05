@@ -17,7 +17,9 @@ export default function Login() {
 
   // Redirect if already logged in
   if (user && userRole) {
-    navigate(userRole === 'admin' ? '/admin/dashboard' : '/staff/dashboard');
+    const dashboardPath = userRole === 'admin' ? '/admin/dashboard' : 
+                          userRole === 'manager' ? '/manager/dashboard' : '/staff/dashboard';
+    navigate(dashboardPath);
     return null;
   }
 

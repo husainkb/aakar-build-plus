@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen } from 'lucide-react';
+import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -38,7 +38,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/generate-quote', label: 'Generate Quote', icon: FileText },
     { href: '/admin/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/admin/reports', label: 'Reports', icon: FileBarChart },
+    { href: '/admin/staff-management', label: 'Staff Management', icon: Users },
     { href: '/admin/change-password', label: 'Change Password', icon: Lock },
+  ];
+
+  const managerLinks = [
+    { href: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/manager/saved-quotes', label: 'Team Quotes', icon: FolderOpen },
+    { href: '/manager/change-password', label: 'Change Password', icon: Lock },
   ];
 
   const staffLinks = [
@@ -49,7 +56,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];
 
-  const links = userRole === 'admin' ? adminLinks : staffLinks;
+  const links = userRole === 'admin' ? adminLinks : 
+                userRole === 'manager' ? managerLinks : staffLinks;
 
   const SidebarNav = () => (
     <nav className="space-y-1 p-4">
