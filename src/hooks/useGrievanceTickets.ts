@@ -38,6 +38,10 @@ export interface GrievanceTicket {
     floor: number;
     type: string;
   };
+  assigned_staff?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface EscalationLog {
@@ -56,6 +60,7 @@ export interface CreateTicketData {
   grievance_type: string;
   description: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  assigned_staff_id?: string;
 }
 
 const SLA_HOURS = 24;
@@ -76,7 +81,8 @@ export function useGrievanceTickets() {
           *,
           customer:customers(id, name, phone_number, email),
           building:buildings(id, name),
-          flat:flats(id, flat_no, wing, floor, type)
+          flat:flats(id, flat_no, wing, floor, type),
+          assigned_staff:profiles_public(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -147,6 +153,7 @@ export function useGrievanceTickets() {
           description: ticketData.description,
           priority: ticketData.priority,
           status: 'new',
+          assigned_staff_id: ticketData.assigned_staff_id || null,
         })
         .select()
         .single();
