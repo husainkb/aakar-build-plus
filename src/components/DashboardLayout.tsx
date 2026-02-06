@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users } from 'lucide-react';
+import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, MessageSquareWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
+import { NotificationBell } from '@/components/NotificationBell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/flats', label: 'Flats', icon: Home },
     { href: '/admin/generate-quote', label: 'Generate Quote', icon: FileText },
     { href: '/admin/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
+    { href: '/admin/grievances', label: 'Grievances', icon: MessageSquareWarning },
     { href: '/admin/reports', label: 'Reports', icon: FileBarChart },
     { href: '/admin/staff-management', label: 'Staff Management', icon: Users },
     { href: '/admin/change-password', label: 'Change Password', icon: Lock },
@@ -45,6 +47,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const managerLinks = [
     { href: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/manager/saved-quotes', label: 'Team Quotes', icon: FolderOpen },
+    { href: '/manager/grievances', label: 'Grievances', icon: MessageSquareWarning },
     { href: '/manager/change-password', label: 'Change Password', icon: Lock },
   ];
 
@@ -169,13 +172,16 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <h2 className="text-base sm:text-lg font-semibold capitalize text-card-foreground">
               {userRole} Dashboard
             </h2>
-            <button
-              onClick={toggleTheme}
-              className="rounded px-3 py-1 text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
-            </button>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <button
+                onClick={toggleTheme}
+                className="rounded px-3 py-1 text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+              </button>
+            </div>
           </div>
         </div>
         <div className="py-4 sm:p-6 lg:p-8">{children}</div>

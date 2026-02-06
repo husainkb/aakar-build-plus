@@ -98,6 +98,38 @@ export type Database = {
         }
         Relationships: []
       }
+      escalation_logs: {
+        Row: {
+          created_at: string
+          escalation_reason: string
+          id: string
+          notified_roles: string[]
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          escalation_reason: string
+          id?: string
+          notified_roles?: string[]
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          escalation_reason?: string
+          id?: string
+          notified_roles?: string[]
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_logs_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "grievance_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           comments: string | null
@@ -219,12 +251,18 @@ export type Database = {
       grievance_tickets: {
         Row: {
           assigned_staff_id: string | null
+          building_id: string | null
           created_at: string
           customer_id: string
           description: string
+          escalated: boolean | null
+          escalated_at: string | null
+          flat_id: string | null
           grievance_type: string
           id: string
           priority: Database["public"]["Enums"]["ticket_priority"]
+          quote_id: string | null
+          resolution_note: string | null
           resolved_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           ticket_number: string
@@ -232,12 +270,18 @@ export type Database = {
         }
         Insert: {
           assigned_staff_id?: string | null
+          building_id?: string | null
           created_at?: string
           customer_id: string
           description: string
+          escalated?: boolean | null
+          escalated_at?: string | null
+          flat_id?: string | null
           grievance_type: string
           id?: string
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          quote_id?: string | null
+          resolution_note?: string | null
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number: string
@@ -245,12 +289,18 @@ export type Database = {
         }
         Update: {
           assigned_staff_id?: string | null
+          building_id?: string | null
           created_at?: string
           customer_id?: string
           description?: string
+          escalated?: boolean | null
+          escalated_at?: string | null
+          flat_id?: string | null
           grievance_type?: string
           id?: string
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          quote_id?: string | null
+          resolution_note?: string | null
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number?: string
@@ -272,10 +322,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "grievance_tickets_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "grievance_tickets_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grievance_tickets_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grievance_tickets_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -511,8 +582,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff" | "manager"
-      ticket_priority: "low" | "medium" | "high"
-      ticket_status: "new" | "open" | "in_progress" | "resolved"
+      ticket_priority: "low" | "medium" | "high" | "urgent"
+      ticket_status: "new" | "open" | "in_progress" | "resolved" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -641,8 +712,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff", "manager"],
-      ticket_priority: ["low", "medium", "high"],
-      ticket_status: ["new", "open", "in_progress", "resolved"],
+      ticket_priority: ["low", "medium", "high", "urgent"],
+      ticket_status: ["new", "open", "in_progress", "resolved", "closed"],
     },
   },
 } as const
