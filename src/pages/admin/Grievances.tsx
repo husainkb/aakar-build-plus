@@ -15,6 +15,17 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,7 +45,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/useGrievanceTickets';
 import { toast } from 'sonner';
-import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History } from 'lucide-react';
+import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
@@ -92,6 +103,7 @@ export default function GrievancesPage() {
     loading,
     createTicket,
     updateTicketStatus,
+    deleteTicket,
     fetchEscalationLogs,
     escalationLogs,
   } = useGrievanceTickets();
@@ -111,14 +123,13 @@ export default function GrievancesPage() {
   const [newStatus, setNewStatus] = useState<GrievanceTicket['status']>('open');
   const [resolutionNote, setResolutionNote] = useState('');
   const [phoneSearch, setPhoneSearch] = useState('');
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [flats, setFlats] = useState<Flat[]>([]);
-  const [customerFlats, setCustomerFlats] = useState<Flat[]>([]);
+  const [customerFlats, setCustomerFlats] = useState<(Flat & { building?: Building })[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTicketId, setDeleteTicketId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Unique wings from flats for the selected building
-  const [availableWings, setAvailableWings] = useState<string[]>([]);
+  // Derived from customer's booked flats
   const [selectedWing, setSelectedWing] = useState<string>('');
 
   // Form state
@@ -138,69 +149,34 @@ export default function GrievancesPage() {
     priority: 'medium',
   });
 
-  // Fetch buildings
-  useEffect(() => {
-    const fetchBuildings = async () => {
-      const { data } = await supabase.from('buildings').select('*').order('name');
-      if (data) setBuildings(data);
-    };
-    fetchBuildings();
-  }, []);
-
-  // Fetch flats when building changes
-  useEffect(() => {
-    if (!formData.building_id) {
-      setFlats([]);
-      setAvailableWings([]);
-      setSelectedWing('');
-      return;
-    }
-
-    const fetchFlats = async () => {
-      const { data } = await supabase
-        .from('flats')
-        .select('*')
-        .eq('building_id', formData.building_id)
-        .order('flat_no');
-      if (data) {
-        setFlats(data);
-        // Extract unique wings
-        const wings = [...new Set(data.map(f => f.wing).filter(Boolean))] as string[];
-        setAvailableWings(wings);
-      }
-    };
-    fetchFlats();
-  }, [formData.building_id]);
-
-  // Filter flats by selected wing
-  const filteredFlats = selectedWing 
-    ? flats.filter(f => f.wing === selectedWing)
-    : flats;
-
   // Fetch customer's booked flats when customer is selected
   useEffect(() => {
     if (!selectedCustomer) {
       setCustomerFlats([]);
+      setFormData(prev => ({ ...prev, building_id: '', flat_id: '' }));
+      setSelectedWing('');
       return;
     }
 
     const fetchCustomerFlats = async () => {
       const { data } = await supabase
         .from('flats')
-        .select('*, building:buildings(id, name)')
+        .select('*, building:buildings(*)')
         .eq('booked_customer_id', selectedCustomer.id)
         .eq('booked_status', 'Booked');
       
       if (data) {
-        setCustomerFlats(data as unknown as Flat[]);
+        const flatsWithBuildings = data as unknown as (Flat & { building: Building })[];
+        setCustomerFlats(flatsWithBuildings);
         // If customer has only one booked flat, auto-select it
-        if (data.length === 1) {
-          const flat = data[0] as unknown as Flat & { building: Building };
+        if (flatsWithBuildings.length === 1) {
+          const flat = flatsWithBuildings[0];
           setFormData(prev => ({
             ...prev,
             building_id: flat.building_id,
             flat_id: flat.id,
           }));
+          setSelectedWing(flat.wing || '');
         }
       }
     };
@@ -217,6 +193,35 @@ export default function GrievancesPage() {
     };
     fetchQuotes();
   }, [selectedCustomer]);
+
+  // Derive buildings from customer's booked flats
+  const customerBuildings = customerFlats.reduce<Building[]>((acc, flat) => {
+    if (flat.building && !acc.find(b => b.id === flat.building!.id)) {
+      acc.push(flat.building);
+    }
+    return acc;
+  }, []);
+
+  // Derive available wings for selected building from customer's booked flats
+  const availableWings = customerFlats
+    .filter(f => f.building_id === formData.building_id && f.wing)
+    .map(f => f.wing!)
+    .filter((wing, index, self) => self.indexOf(wing) === index);
+
+  // Filter flats based on building and wing selection
+  const filteredFlats = customerFlats.filter(flat => {
+    if (flat.building_id !== formData.building_id) return false;
+    if (selectedWing && flat.wing !== selectedWing) return false;
+    return true;
+  });
+
+  const handleDeleteTicket = async () => {
+    if (!deleteTicketId) return;
+    setIsDeleting(true);
+    await deleteTicket(deleteTicketId);
+    setIsDeleting(false);
+    setDeleteTicketId(null);
+  };
 
   const handlePhoneSearch = (value: string) => {
     setPhoneSearch(value);
@@ -541,79 +546,91 @@ export default function GrievancesPage() {
                 )}
 
                 {/* Building and Wing Selection */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Building</Label>
-                    <Select
-                      value={formData.building_id}
-                      onValueChange={(value) => {
-                        setFormData(prev => ({
-                          ...prev,
-                          building_id: value,
-                          flat_id: '',
-                        }));
-                        setSelectedWing('');
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select building" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {buildings.map((building) => (
-                          <SelectItem key={building.id} value={building.id}>
-                            {building.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {selectedCustomer && customerFlats.length > 0 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Building</Label>
+                        <Select
+                          value={formData.building_id}
+                          onValueChange={(value) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              building_id: value,
+                              flat_id: '',
+                            }));
+                            setSelectedWing('');
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select building" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customerBuildings.map((building) => (
+                              <SelectItem key={building.id} value={building.id}>
+                                {building.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  {/* Wing Selection */}
-                  <div className="space-y-2">
-                    <Label>Wing {availableWings.length === 0 && formData.building_id ? '(N/A)' : ''}</Label>
-                    <Select
-                      value={selectedWing || "all"}
-                      onValueChange={(value) => {
-                        setSelectedWing(value === "all" ? "" : value);
-                        setFormData(prev => ({ ...prev, flat_id: '' }));
-                      }}
-                      disabled={!formData.building_id || availableWings.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={availableWings.length === 0 ? 'No wings' : 'Select wing'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Wings</SelectItem>
-                        {availableWings.map((wing) => (
-                          <SelectItem key={wing} value={wing}>
-                            {wing}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                      {/* Wing Selection */}
+                      <div className="space-y-2">
+                        <Label>Wing {availableWings.length === 0 && formData.building_id ? '(N/A)' : ''}</Label>
+                        <Select
+                          value={selectedWing || "all"}
+                          onValueChange={(value) => {
+                            setSelectedWing(value === "all" ? "" : value);
+                            setFormData(prev => ({ ...prev, flat_id: '' }));
+                          }}
+                          disabled={!formData.building_id || availableWings.length === 0}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={availableWings.length === 0 ? 'No wings' : 'Select wing'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Wings</SelectItem>
+                            {availableWings.map((wing) => (
+                              <SelectItem key={wing} value={wing}>
+                                {wing}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                {/* Flat Selection */}
-                <div className="space-y-2">
-                  <Label>Flat/Unit</Label>
-                  <Select
-                    value={formData.flat_id}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, flat_id: value }))}
-                    disabled={!formData.building_id}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select flat" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredFlats.map((flat) => (
-                        <SelectItem key={flat.id} value={flat.id}>
-                          {flat.wing ? `${flat.wing}-` : ''}Flat {flat.flat_no} (Floor {flat.floor})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    {/* Flat Selection */}
+                    <div className="space-y-2">
+                      <Label>Flat/Unit</Label>
+                      <Select
+                        value={formData.flat_id}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, flat_id: value }))}
+                        disabled={!formData.building_id}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select flat" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredFlats.map((flat) => (
+                            <SelectItem key={flat.id} value={flat.id}>
+                              {flat.wing ? `${flat.wing}-` : ''}Flat {flat.flat_no} (Floor {flat.floor})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {selectedCustomer && customerFlats.length === 0 && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      This customer has no booked properties. Please select a customer with at least one booking.
+                    </p>
+                  </div>
+                )}
 
                 {/* Quote Selection (optional) */}
                 {quotes.length > 0 && (
@@ -817,6 +834,36 @@ export default function GrievancesPage() {
                                 >
                                   <History className="h-4 w-4" />
                                 </Button>
+                                <AlertDialog open={deleteTicketId === ticket.id} onOpenChange={(open) => !open && setDeleteTicketId(null)}>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => setDeleteTicketId(ticket.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Ticket</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete ticket {ticket.ticket_number}? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={handleDeleteTicket}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        disabled={isDeleting}
+                                      >
+                                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </TableCell>
                           </TableRow>

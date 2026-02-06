@@ -279,6 +279,29 @@ export function useGrievanceTickets() {
     }
   }, [overdueTickets.length, checkAndEscalateOverdue]);
 
+  const deleteTicket = useCallback(async (ticketId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('grievance_tickets')
+        .delete()
+        .eq('id', ticketId);
+
+      if (error) {
+        console.error('Error deleting ticket:', error);
+        toast.error('Failed to delete ticket');
+        return false;
+      }
+
+      toast.success('Ticket deleted successfully');
+      await fetchTickets();
+      return true;
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      toast.error('Failed to delete ticket');
+      return false;
+    }
+  }, [fetchTickets]);
+
   return {
     tickets,
     overdueTickets,
@@ -288,6 +311,7 @@ export function useGrievanceTickets() {
     fetchEscalationLogs,
     createTicket,
     updateTicketStatus,
+    deleteTicket,
     logEscalation,
     checkAndEscalateOverdue,
   };
