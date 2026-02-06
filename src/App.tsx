@@ -16,8 +16,10 @@ import AdminReports from "./pages/admin/Reports";
 import AdminSavedQuotes from "./pages/admin/SavedQuotes";
 import AdminGenerateQuote from "./pages/admin/GenerateQuote";
 import StaffManagement from "./pages/admin/StaffManagement";
+import AdminGrievances from "./pages/admin/Grievances";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerSavedQuotes from "./pages/manager/SavedQuotes";
+import ManagerGrievances from "./pages/manager/Grievances";
 import StaffDashboard from "./pages/staff/Dashboard";
 import GenerateQuote from "./pages/staff/GenerateQuote";
 import SavedQuotes from "./pages/staff/SavedQuotes";
@@ -49,10 +51,12 @@ const App = () => (
             <Route path="/admin/saved-quotes" element={<ProtectedRoute requiredRole="admin"><AdminSavedQuotes /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
             <Route path="/admin/staff-management" element={<ProtectedRoute requiredRole="admin"><StaffManagement /></ProtectedRoute>} />
+            <Route path="/admin/grievances" element={<ProtectedRoute requiredRole="admin"><AdminGrievances /></ProtectedRoute>} />
             <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
             {/* Manager Routes */}
             <Route path="/manager/dashboard" element={<ProtectedRoute requiredRole="manager"><ManagerDashboard /></ProtectedRoute>} />
             <Route path="/manager/saved-quotes" element={<ProtectedRoute requiredRole="manager"><ManagerSavedQuotes /></ProtectedRoute>} />
+            <Route path="/manager/grievances" element={<ProtectedRoute requiredRole="manager"><ManagerGrievances /></ProtectedRoute>} />
             <Route path="/manager/change-password" element={<ProtectedRoute requiredRole="manager"><ChangePassword /></ProtectedRoute>} />
             {/* Staff Routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute requiredRole="staff"><StaffDashboard /></ProtectedRoute>} />
