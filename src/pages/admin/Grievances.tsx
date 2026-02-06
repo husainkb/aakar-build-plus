@@ -575,30 +575,34 @@ export default function GrievancesPage() {
                         </Select>
                       </div>
 
-                      {/* Wing Selection */}
-                      <div className="space-y-2">
-                        <Label>Wing {availableWings.length === 0 && formData.building_id ? '(N/A)' : ''}</Label>
-                        <Select
-                          value={selectedWing || "all"}
-                          onValueChange={(value) => {
-                            setSelectedWing(value === "all" ? "" : value);
-                            setFormData(prev => ({ ...prev, flat_id: '' }));
-                          }}
-                          disabled={!formData.building_id || availableWings.length === 0}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={availableWings.length === 0 ? 'No wings' : 'Select wing'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Wings</SelectItem>
-                            {availableWings.map((wing) => (
-                              <SelectItem key={wing} value={wing}>
-                                {wing}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {/* Wing Selection - only show if there are wings */}
+                      {availableWings.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Wing</Label>
+                          <Select
+                            value={selectedWing || (availableWings.length > 1 ? "all" : availableWings[0])}
+                            onValueChange={(value) => {
+                              setSelectedWing(value === "all" ? "" : value);
+                              setFormData(prev => ({ ...prev, flat_id: '' }));
+                            }}
+                            disabled={!formData.building_id}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select wing" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableWings.length > 1 && (
+                                <SelectItem value="all">All Wings</SelectItem>
+                              )}
+                              {availableWings.map((wing) => (
+                                <SelectItem key={wing} value={wing}>
+                                  {wing}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Flat Selection */}
