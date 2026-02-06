@@ -572,9 +572,9 @@ export default function GrievancesPage() {
                   <div className="space-y-2">
                     <Label>Wing {availableWings.length === 0 && formData.building_id ? '(N/A)' : ''}</Label>
                     <Select
-                      value={selectedWing}
+                      value={selectedWing || "all"}
                       onValueChange={(value) => {
-                        setSelectedWing(value);
+                        setSelectedWing(value === "all" ? "" : value);
                         setFormData(prev => ({ ...prev, flat_id: '' }));
                       }}
                       disabled={!formData.building_id || availableWings.length === 0}
@@ -583,7 +583,7 @@ export default function GrievancesPage() {
                         <SelectValue placeholder={availableWings.length === 0 ? 'No wings' : 'Select wing'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Wings</SelectItem>
+                        <SelectItem value="all">All Wings</SelectItem>
                         {availableWings.map((wing) => (
                           <SelectItem key={wing} value={wing}>
                             {wing}
