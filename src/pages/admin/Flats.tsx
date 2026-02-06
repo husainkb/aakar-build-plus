@@ -12,8 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, Copy, Search, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
 interface Building {
   id: string;
@@ -564,136 +563,34 @@ export default function Flats() {
       const totalStatutories = Object.values(statutories).reduce((a, b) => a + b, 0);
       const grandTotal = agreementAmount + totalStatutories;
 
-      const doc = new jsPDF();
-      const pageHeight = doc.internal.pageSize.height;
-      const margin = 20;
-      let currentY = 20;
-
-      doc.setTextColor(0, 0, 0);
-
-      const checkPageBreak = (requiredSpace: number) => {
-        if (currentY + requiredSpace > pageHeight - margin) {
-          doc.addPage();
-          currentY = margin;
-          doc.setTextColor(0, 0, 0);
-          return true;
-        }
-        return false;
+      const quoteData: QuoteData = {
+        customerTitle,
+        customerName,
+        flatNo: flat.flat_no,
+        wing: flat.wing,
+        superBuiltUp: flat.square_foot,
+        terraceArea: flat.terrace_area || 0,
+        totalArea,
+        loanAmount,
+        agreementAmount,
+        paymentModes: building.payment_modes || [],
+        statutoriesPercent: {
+          maintenance: building.maintenance,
+          electrical: building.electrical_water_charges,
+          registration: building.registration_charges,
+          gst: building.gst_tax,
+          stampDuty: stampDutyPercent,
+          legal: building.legal_charges,
+          other: building.other_charges
+        },
+        statutories,
+        totalStatutories,
+        grandTotal,
+        buildingName: building.name
       };
-
-      const formatINR = (value: number): string => {
-        if (!value || isNaN(value)) return 'Rs. 0';
-        return 'Rs. ' + value.toLocaleString('en-IN', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2
-        });
-      };
-
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('QUOTATION', 105, currentY, { align: 'center' });
-      currentY += 15;
-
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      const greeting = customer.gender === 'Male' ? 'Dear Sir,' : customer.gender === 'Female' ? 'Dear Madam,' : 'Dear Sir/Madam,';
-      doc.text(greeting, margin, currentY);
-      currentY += 8;
-
-      doc.text(`${customerTitle} ${customerName}`, margin, currentY);
-      currentY += 12;
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [['Flat Details', 'Value']],
-        body: [
-          ['Flat No', `${flat.wing ? flat.wing + '-' : ''}${flat.flat_no}`],
-          ['Floor', flat.floor.toString()],
-          ['Type', flat.type],
-          ['Super Built-up Area', `${flat.square_foot} sq.ft`],
-          ['Terrace Area', `${flat.terrace_area || 0} sq.ft`],
-          ['Total Area', `${totalArea} sq.ft`],
-          ['Rate per sq.ft', formatINR(basicRate)],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [66, 66, 66] },
-        margin: { left: margin, right: margin },
-      });
-
-      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 60;
-      checkPageBreak(80);
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [['Amount Details', 'Amount']],
-        body: [
-          ['Agreement Amount', formatINR(agreementAmount)],
-          ['Estimated Loan Amount (95%)', formatINR(loanAmount)],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [66, 66, 66] },
-        margin: { left: margin, right: margin },
-      });
-
-      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 30;
-      checkPageBreak(100);
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [['Statutory Charges', 'Amount']],
-        body: [
-          ['Maintenance', formatINR(statutories.maintenance)],
-          ['Electrical & Water Charges', formatINR(statutories.electrical)],
-          ['Registration Charges', formatINR(statutories.registration)],
-          ['GST', formatINR(statutories.gst)],
-          ['Stamp Duty' + (customer.gender === 'Female' ? ' (1% Female Discount)' : ''), formatINR(statutories.stampDuty)],
-          ['Legal Charges', formatINR(statutories.legal)],
-          ['Other Charges', formatINR(statutories.other)],
-          ['Total Statutory Charges', formatINR(totalStatutories)],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [66, 66, 66] },
-        margin: { left: margin, right: margin },
-      });
-
-      currentY = (doc as any).lastAutoTable?.finalY + 10 || currentY + 80;
-      checkPageBreak(40);
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Total Flat Amount: ${formatINR(grandTotal)}`, margin, currentY);
-      currentY += 20;
-
-      if (building.payment_modes && building.payment_modes.length > 0) {
-        checkPageBreak(60);
-        
-        const paymentBody = building.payment_modes.map(mode => [
-          mode.text,
-          `${mode.value}%`,
-          formatINR(agreementAmount * (mode.value / 100))
-        ]);
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Payment Schedule', 'Percentage', 'Amount']],
-          body: paymentBody,
-          theme: 'grid',
-          headStyles: { fillColor: [66, 66, 66] },
-          margin: { left: margin, right: margin },
-        });
-
-        currentY = (doc as any).lastAutoTable?.finalY + 15 || currentY + 50;
-      }
-
-      checkPageBreak(50);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      currentY += 10;
-      doc.text('Customer Signature: ___________________', margin, currentY);
-      doc.text('Date: ___________________', 120, currentY);
 
       const fileName = `Quote_${building.name}_${flat.wing ? flat.wing + '-' : ''}${flat.flat_no}.pdf`;
-      doc.save(fileName);
+      downloadQuote(quoteData, fileName);
       toast.success('Quote downloaded successfully!');
     } catch (error) {
       console.error('Error generating quote:', error);

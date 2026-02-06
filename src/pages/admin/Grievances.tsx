@@ -36,8 +36,7 @@ import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/
 import { toast } from 'sonner';
 import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
 interface Building {
   id: string;
@@ -118,6 +117,10 @@ export default function GrievancesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // Unique wings from flats for the selected building
+  const [availableWings, setAvailableWings] = useState<string[]>([]);
+  const [selectedWing, setSelectedWing] = useState<string>('');
+
   // Form state
   const [formData, setFormData] = useState<{
     building_id: string;
@@ -148,6 +151,8 @@ export default function GrievancesPage() {
   useEffect(() => {
     if (!formData.building_id) {
       setFlats([]);
+      setAvailableWings([]);
+      setSelectedWing('');
       return;
     }
 
@@ -157,10 +162,20 @@ export default function GrievancesPage() {
         .select('*')
         .eq('building_id', formData.building_id)
         .order('flat_no');
-      if (data) setFlats(data);
+      if (data) {
+        setFlats(data);
+        // Extract unique wings
+        const wings = [...new Set(data.map(f => f.wing).filter(Boolean))] as string[];
+        setAvailableWings(wings);
+      }
     };
     fetchFlats();
   }, [formData.building_id]);
+
+  // Filter flats by selected wing
+  const filteredFlats = selectedWing 
+    ? flats.filter(f => f.wing === selectedWing)
+    : flats;
 
   // Fetch customer's booked flats when customer is selected
   useEffect(() => {
@@ -249,6 +264,7 @@ export default function GrievancesPage() {
   const resetForm = () => {
     setPhoneSearch('');
     clearCustomer();
+    setSelectedWing('');
     setFormData({
       building_id: '',
       flat_id: '',
@@ -316,69 +332,81 @@ export default function GrievancesPage() {
 
     const building = flat.building as Building;
     const ratePerSqft = flat.booking_rate_per_sqft || building.rate_per_sqft;
-    const baseAmount = flat.square_foot * ratePerSqft;
+    const totalArea = flat.square_foot + (flat.terrace_area || 0);
+    const agreementAmount = totalArea * ratePerSqft;
+    const loanAmount = agreementAmount * 0.95;
 
-    // Generate PDF
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFontSize(18);
-    doc.text('Quotation', pageWidth / 2, 20, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.text(`Date: ${format(new Date(), 'dd/MM/yyyy')}`, 14, 35);
-    doc.text(`Ticket: ${ticket.ticket_number}`, 14, 42);
-
-    // Customer details
-    if (ticket.customer) {
-      doc.text(`Customer: ${ticket.customer.name}`, 14, 52);
-      doc.text(`Phone: ${ticket.customer.phone_number}`, 14, 59);
+    // Extract customer title and name
+    const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+    let customerTitle = '';
+    let customerName = ticket.customer?.name || '';
+    for (const prefix of titlePrefixes) {
+      if (customerName.startsWith(prefix + ' ')) {
+        customerTitle = prefix;
+        customerName = customerName.substring(prefix.length + 1);
+        break;
+      }
     }
 
-    // Flat details
-    const flatDetails = [
-      ['Building', building.name],
-      ['Flat No', `${flat.wing ? flat.wing + '-' : ''}${flat.flat_no}`],
-      ['Floor', String(flat.floor)],
-      ['Type', flat.type],
-      ['Area (sq.ft)', String(flat.square_foot)],
-      ['Rate/sq.ft', `₹${ratePerSqft.toLocaleString()}`],
-    ];
+    // Calculate statutory charges
+    const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
+    const gstTax = agreementAmount * (building.gst_tax / 100);
+    const stampDuty = agreementAmount * (building.stamp_duty / 100);
 
-    autoTable(doc, {
-      startY: 70,
-      head: [['Property Details', 'Value']],
-      body: flatDetails,
-      theme: 'grid',
-    });
+    const statutories = {
+      maintenance: building.maintenance,
+      electrical: building.electrical_water_charges,
+      registration: registrationCharges,
+      gst: gstTax,
+      stampDuty: stampDuty,
+      legal: building.legal_charges,
+      other: building.other_charges
+    };
 
-    // Charges breakdown
-    const charges = [
-      ['Base Amount', `₹${baseAmount.toLocaleString()}`],
-      ['Maintenance', `₹${building.maintenance.toLocaleString()}`],
-      ['Electrical/Water', `₹${building.electrical_water_charges.toLocaleString()}`],
-      ['Registration', `₹${building.registration_charges.toLocaleString()}`],
-      ['GST', `₹${building.gst_tax.toLocaleString()}`],
-      ['Stamp Duty', `₹${building.stamp_duty.toLocaleString()}`],
-      ['Legal Charges', `₹${building.legal_charges.toLocaleString()}`],
-      ['Other Charges', `₹${building.other_charges.toLocaleString()}`],
-    ];
+    const totalStatutories = Object.values(statutories).reduce((a, b) => a + b, 0);
+    const grandTotal = agreementAmount + totalStatutories;
 
-    const totalCharges = building.maintenance + building.electrical_water_charges +
-      building.registration_charges + building.gst_tax + building.stamp_duty +
-      building.legal_charges + building.other_charges;
-    const totalAmount = baseAmount + totalCharges;
+    // Parse payment modes
+    let paymentModes: Array<{ text: string; value: number }> = [];
+    try {
+      if ((building as any).payment_modes) {
+        if (typeof (building as any).payment_modes === 'string') {
+          paymentModes = JSON.parse((building as any).payment_modes);
+        } else {
+          paymentModes = (building as any).payment_modes;
+        }
+      }
+    } catch (e) {
+      paymentModes = [];
+    }
 
-    charges.push(['Total Amount', `₹${totalAmount.toLocaleString()}`]);
+    const quoteData: QuoteData = {
+      customerTitle,
+      customerName,
+      flatNo: flat.flat_no,
+      wing: flat.wing,
+      superBuiltUp: flat.square_foot,
+      terraceArea: flat.terrace_area || 0,
+      totalArea,
+      loanAmount,
+      agreementAmount,
+      paymentModes,
+      statutoriesPercent: {
+        maintenance: building.maintenance,
+        electrical: building.electrical_water_charges,
+        registration: building.registration_charges,
+        gst: building.gst_tax,
+        stampDuty: building.stamp_duty,
+        legal: building.legal_charges,
+        other: building.other_charges
+      },
+      statutories,
+      totalStatutories,
+      grandTotal,
+      buildingName: building.name
+    };
 
-    autoTable(doc, {
-      startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10,
-      head: [['Charges', 'Amount']],
-      body: charges,
-      theme: 'grid',
-    });
-
-    doc.save(`Quote_${ticket.ticket_number}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+    downloadQuote(quoteData, `Quote_${ticket.ticket_number}_${format(new Date(), 'yyyyMMdd')}.pdf`);
     toast.success('Quote downloaded');
   };
 
@@ -512,17 +540,20 @@ export default function GrievancesPage() {
                   </div>
                 )}
 
-                {/* Building Selection */}
+                {/* Building and Wing Selection */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Building</Label>
                     <Select
                       value={formData.building_id}
-                      onValueChange={(value) => setFormData(prev => ({
-                        ...prev,
-                        building_id: value,
-                        flat_id: '',
-                      }))}
+                      onValueChange={(value) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          building_id: value,
+                          flat_id: '',
+                        }));
+                        setSelectedWing('');
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select building" />
@@ -537,25 +568,51 @@ export default function GrievancesPage() {
                     </Select>
                   </div>
 
+                  {/* Wing Selection */}
                   <div className="space-y-2">
-                    <Label>Flat/Unit</Label>
+                    <Label>Wing {availableWings.length === 0 && formData.building_id ? '(N/A)' : ''}</Label>
                     <Select
-                      value={formData.flat_id}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, flat_id: value }))}
-                      disabled={!formData.building_id}
+                      value={selectedWing}
+                      onValueChange={(value) => {
+                        setSelectedWing(value);
+                        setFormData(prev => ({ ...prev, flat_id: '' }));
+                      }}
+                      disabled={!formData.building_id || availableWings.length === 0}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select flat" />
+                        <SelectValue placeholder={availableWings.length === 0 ? 'No wings' : 'Select wing'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {flats.map((flat) => (
-                          <SelectItem key={flat.id} value={flat.id}>
-                            {flat.wing ? `${flat.wing}-` : ''}Flat {flat.flat_no} (Floor {flat.floor})
+                        <SelectItem value="">All Wings</SelectItem>
+                        {availableWings.map((wing) => (
+                          <SelectItem key={wing} value={wing}>
+                            {wing}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Flat Selection */}
+                <div className="space-y-2">
+                  <Label>Flat/Unit</Label>
+                  <Select
+                    value={formData.flat_id}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, flat_id: value }))}
+                    disabled={!formData.building_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select flat" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredFlats.map((flat) => (
+                        <SelectItem key={flat.id} value={flat.id}>
+                          {flat.wing ? `${flat.wing}-` : ''}Flat {flat.flat_no} (Floor {flat.floor})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Quote Selection (optional) */}
