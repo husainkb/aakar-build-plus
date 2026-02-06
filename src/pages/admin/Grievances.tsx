@@ -44,8 +44,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/useGrievanceTickets';
+import { useStaffMembers } from '@/hooks/useStaffMembers';
 import { toast } from 'sonner';
-import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2 } from 'lucide-react';
+import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
@@ -116,6 +117,8 @@ export default function GrievancesPage() {
     clearCustomer,
   } = useCustomerSearch();
 
+  const { staffMembers, loading: staffLoading } = useStaffMembers();
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -140,6 +143,7 @@ export default function GrievancesPage() {
     grievance_type: string;
     description: string;
     priority: 'low' | 'medium' | 'high' | 'urgent';
+    assigned_staff_id: string;
   }>({
     building_id: '',
     flat_id: '',
@@ -147,6 +151,7 @@ export default function GrievancesPage() {
     grievance_type: '',
     description: '',
     priority: 'medium',
+    assigned_staff_id: '',
   });
 
   // Fetch customer's booked flats when customer is selected
@@ -255,6 +260,7 @@ export default function GrievancesPage() {
       grievance_type: formData.grievance_type,
       description: formData.description,
       priority: formData.priority,
+      assigned_staff_id: formData.assigned_staff_id || undefined,
     };
 
     const result = await createTicket(ticketData);
@@ -277,6 +283,7 @@ export default function GrievancesPage() {
       grievance_type: '',
       description: '',
       priority: 'medium',
+      assigned_staff_id: '',
     });
   };
 
@@ -699,6 +706,39 @@ export default function GrievancesPage() {
                   </div>
                 </div>
 
+                {/* Staff Assignment */}
+                <div className="space-y-2">
+                  <Label>Assign to Staff (Optional)</Label>
+                  <Select
+                    value={formData.assigned_staff_id}
+                    onValueChange={(value) => setFormData(prev => ({ 
+                      ...prev, 
+                      assigned_staff_id: value === 'none' ? '' : value 
+                    }))}
+                    disabled={staffLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={staffLoading ? 'Loading staff...' : 'Select staff member'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {staffMembers.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>{staff.name}</span>
+                            {staff.manager && (
+                              <span className="text-muted-foreground text-xs">
+                                (Manager: {staff.manager.name})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Description */}
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -768,6 +808,7 @@ export default function GrievancesPage() {
                         <TableRow>
                           <TableHead>Ticket #</TableHead>
                           <TableHead>Customer</TableHead>
+                          <TableHead>Assigned Staff</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Priority</TableHead>
                           <TableHead>Status</TableHead>
@@ -799,6 +840,16 @@ export default function GrievancesPage() {
                                   {ticket.customer?.phone_number}
                                 </p>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {ticket.assigned_staff ? (
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">{ticket.assigned_staff.name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">Unassigned</span>
+                              )}
                             </TableCell>
                             <TableCell>{ticket.grievance_type}</TableCell>
                             <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
@@ -874,7 +925,7 @@ export default function GrievancesPage() {
                         ))}
                         {filterTicketsByStatus(status).length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                               No tickets found
                             </TableCell>
                           </TableRow>

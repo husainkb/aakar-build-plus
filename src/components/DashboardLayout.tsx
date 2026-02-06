@@ -55,6 +55,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/staff/generate-quote', label: 'Generate Quote', icon: FileText },
     { href: '/staff/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
+    { href: '/staff/grievances', label: 'My Tickets', icon: MessageSquareWarning },
     { href: '/staff/reports', label: 'Reports', icon: FileBarChart },
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];
