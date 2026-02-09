@@ -14,7 +14,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify the caller is authenticated and is admin/manager/staff
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -35,7 +34,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check caller role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: profile } = await adminClient
       .from("profiles")
@@ -59,8 +57,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create auth user with service role (won't affect caller's session)
-    // No email confirmation required — customer accounts are created by staff
+    // Try to create the auth user
     const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -70,23 +67,47 @@ Deno.serve(async (req) => {
       user_metadata: { name, role: "customer", phone_number: phoneNumber || "" },
     });
 
+    let userId: string | null = null;
+
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // If user already exists, find them and update their password
+      if (createError.message?.includes("already been registered")) {
+        const { data: listData } = await adminClient.auth.admin.listUsers();
+        const existingUser = listData?.users?.find((u) => u.email === email);
+
+        if (existingUser) {
+          // Update password and metadata for existing user
+          await adminClient.auth.admin.updateUser(existingUser.id, {
+            password,
+            user_metadata: { name, role: "customer", phone_number: phoneNumber || "" },
+          });
+          userId = existingUser.id;
+        } else {
+          return new Response(JSON.stringify({ error: createError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      userId = authData.user?.id ?? null;
     }
 
     // Link customer record to auth user
-    if (authData.user) {
+    if (userId) {
       await adminClient
         .from("customers")
-        .update({ user_id: authData.user.id })
+        .update({ user_id: userId })
         .eq("id", customerId);
     }
 
     return new Response(
-      JSON.stringify({ success: true, userId: authData.user?.id }),
+      JSON.stringify({ success: true, userId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
