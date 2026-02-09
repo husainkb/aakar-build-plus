@@ -167,9 +167,22 @@ export default function StaffFlats() {
     setCustomerEmail('');
     setBookingRatePerSqft('');
     setGeneratedPassword('');
+    setIsNewCustomer(false);
     clearCustomer();
     setShowCustomerDropdown(false);
   };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const specials = '@#$!%&';
+    let pwd = '';
+    for (let i = 0; i < 6; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+    pwd += specials[Math.floor(Math.random() * specials.length)];
+    pwd += Math.floor(Math.random() * 90 + 10);
+    return pwd;
+  };
+
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
 
   const handlePhoneChange = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
@@ -180,7 +193,24 @@ export default function StaffFlats() {
     } else {
       setShowCustomerDropdown(false);
     }
+
+    if (cleanValue.length >= 10 && matchingCustomers.length === 0 && !isSearching) {
+      if (!isNewCustomer) {
+        setIsNewCustomer(true);
+        setGeneratedPassword(generatePassword());
+      }
+    }
   };
+
+  // Check after search completes
+  useEffect(() => {
+    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && bookedStatus === 'Booked') {
+      if (!isNewCustomer) {
+        setIsNewCustomer(true);
+        setGeneratedPassword(generatePassword());
+      }
+    }
+  }, [matchingCustomers, isSearching, customerPhone]);
 
   const handleSelectCustomerFromDropdown = (customer: Customer) => {
     const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
@@ -200,6 +230,8 @@ export default function StaffFlats() {
     if (customer.gender) setCustomerGender(customer.gender);
     selectCustomer(customer);
     setShowCustomerDropdown(false);
+    setIsNewCustomer(false);
+    setGeneratedPassword('');
     toast.success('Customer details populated!');
   };
 
@@ -238,7 +270,7 @@ export default function StaffFlats() {
           .single();
 
         if (!existingCustomer?.user_id) {
-          const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + '!1';
+          const password = generatedPassword || generatePassword();
           
           const response = await supabase.functions.invoke('create-customer-account', {
             body: {
@@ -493,29 +525,35 @@ export default function StaffFlats() {
                       {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                     </div>
 
-                    {/* Generated Password Display */}
-                    {generatedPassword && (
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Key className="h-4 w-4 text-green-600" />
-                          <p className="text-sm font-semibold text-green-800 dark:text-green-200">Customer Login Credentials</p>
-                        </div>
-                        <p className="text-sm text-green-700 dark:text-green-300">Email: <strong>{customerEmail}</strong></p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm text-green-700 dark:text-green-300">Password: <strong>{generatedPassword}</strong></p>
+                    {/* Generated Password Field for New Customers */}
+                    {generatedPassword && isNewCustomer && (
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground flex items-center gap-2">
+                          <Key className="h-4 w-4" />
+                          Generated Password (New Customer)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={generatedPassword}
+                            readOnly
+                            className="font-mono text-base tracking-wider"
+                          />
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="sm"
+                            variant="outline"
+                            size="default"
                             onClick={() => {
                               navigator.clipboard.writeText(generatedPassword);
                               toast.success('Password copied to clipboard!');
                             }}
                           >
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copy
                           </Button>
                         </div>
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">Share these credentials with the customer for login access.</p>
+                        <p className="text-xs text-muted-foreground">
+                          Copy and share this password with the customer for login access at <strong>/customer/login</strong>.
+                        </p>
                       </div>
                     )}
                   </>
