@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, name, password, customerId } = await req.json();
+    const { email, name, password, customerId, phoneNumber } = await req.json();
 
     if (!email || !name || !password || !customerId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -60,11 +60,14 @@ Deno.serve(async (req) => {
     }
 
     // Create auth user with service role (won't affect caller's session)
+    // No email confirmation required — customer accounts are created by staff
     const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role: "customer" },
+      phone: phoneNumber || undefined,
+      phone_confirm: true,
+      user_metadata: { name, role: "customer", phone_number: phoneNumber || "" },
     });
 
     if (createError) {

@@ -278,6 +278,7 @@ export default function StaffFlats() {
               name: fullName,
               password,
               customerId,
+              phoneNumber: customerPhone,
             },
           });
 
@@ -525,18 +526,19 @@ export default function StaffFlats() {
                       {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                     </div>
 
-                    {/* Generated Password Field for New Customers */}
+                    {/* Password & Credentials for New Customers */}
                     {generatedPassword && isNewCustomer && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="text-muted-foreground flex items-center gap-2">
                           <Key className="h-4 w-4" />
-                          Generated Password (New Customer)
+                          Password (New Customer)
                         </Label>
                         <div className="flex items-center gap-2">
                           <Input
                             value={generatedPassword}
-                            readOnly
+                            onChange={(e) => setGeneratedPassword(e.target.value)}
                             className="font-mono text-base tracking-wider"
+                            placeholder="Enter or edit password"
                           />
                           <Button
                             type="button"
@@ -551,9 +553,25 @@ export default function StaffFlats() {
                             Copy
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Copy and share this password with the customer for login access at <strong>/customer/login</strong>.
-                        </p>
+                        <div className="p-3 bg-muted rounded-md text-sm space-y-1">
+                          <p><strong>Login Email:</strong> {customerEmail}</p>
+                          <p><strong>Login Phone:</strong> {customerPhone}</p>
+                          <p><strong>Password:</strong> {generatedPassword}</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              const text = `Customer Login Credentials\nEmail: ${customerEmail}\nPhone: ${customerPhone}\nPassword: ${generatedPassword}\nLogin URL: /customer/login`;
+                              navigator.clipboard.writeText(text);
+                              toast.success('All credentials copied to clipboard!');
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copy All Credentials
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </>
