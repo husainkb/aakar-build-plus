@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Search, Loader2, Download } from 'lucide-react';
+import { Pencil, Search, Loader2, Download, Copy, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useAuth } from '@/lib/auth';
@@ -166,6 +166,7 @@ export default function StaffFlats() {
     setCustomerPhone('');
     setCustomerEmail('');
     setBookingRatePerSqft('');
+    setGeneratedPassword('');
     clearCustomer();
     setShowCustomerDropdown(false);
   };
@@ -202,6 +203,8 @@ export default function StaffFlats() {
     toast.success('Customer details populated!');
   };
 
+  const [generatedPassword, setGeneratedPassword] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingFlat) return;
@@ -225,6 +228,37 @@ export default function StaffFlats() {
     if (bookedStatus === 'Booked') {
       const fullName = `${customerTitle} ${customerName}`.trim();
       customerId = await createOrUpdateCustomer(customerPhone, fullName, customerEmail, customerGender);
+
+      // Create auth account for customer if new
+      if (customerId) {
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('user_id')
+          .eq('id', customerId)
+          .single();
+
+        if (!existingCustomer?.user_id) {
+          const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + '!1';
+          
+          const response = await supabase.functions.invoke('create-customer-account', {
+            body: {
+              email: customerEmail,
+              name: fullName,
+              password,
+              customerId,
+            },
+          });
+
+          if (response.error || response.data?.error) {
+            const errMsg = response.data?.error || response.error?.message || 'Unknown error';
+            console.error('Error creating customer auth account:', errMsg);
+            toast.error('Customer account creation failed: ' + errMsg);
+          } else {
+            setGeneratedPassword(password);
+            toast.success('Customer login account created!');
+          }
+        }
+      }
     }
 
     const { error } = await supabase
@@ -458,6 +492,32 @@ export default function StaffFlats() {
                       <Input type="number" step="0.01" min="0" value={bookingRatePerSqft} onChange={(e) => setBookingRatePerSqft(e.target.value)} className={errors.bookingRatePerSqft ? 'border-destructive' : ''} />
                       {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                     </div>
+
+                    {/* Generated Password Display */}
+                    {generatedPassword && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Key className="h-4 w-4 text-green-600" />
+                          <p className="text-sm font-semibold text-green-800 dark:text-green-200">Customer Login Credentials</p>
+                        </div>
+                        <p className="text-sm text-green-700 dark:text-green-300">Email: <strong>{customerEmail}</strong></p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-green-700 dark:text-green-300">Password: <strong>{generatedPassword}</strong></p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedPassword);
+                              toast.success('Password copied to clipboard!');
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">Share these credentials with the customer for login access.</p>
+                      </div>
+                    )}
                   </>
                 )}
 
