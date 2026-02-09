@@ -53,6 +53,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const staffLinks = [
     { href: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/staff/flats', label: 'Flats', icon: Home },
     { href: '/staff/generate-quote', label: 'Generate Quote', icon: FileText },
     { href: '/staff/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/staff/grievances', label: 'My Tickets', icon: MessageSquareWarning },
@@ -60,8 +61,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];
 
+  const customerLinks = [
+    { href: '/customer/grievances', label: 'My Grievances', icon: MessageSquareWarning },
+    { href: '/customer/change-password', label: 'Change Password', icon: Lock },
+  ];
+
   const links = userRole === 'admin' ? adminLinks : 
-                userRole === 'manager' ? managerLinks : staffLinks;
+                userRole === 'manager' ? managerLinks :
+                userRole === 'customer' ? customerLinks : staffLinks;
 
   const SidebarNav = () => (
     <nav className="space-y-1 p-4">

@@ -5,7 +5,7 @@ export interface StaffMember {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: string;
 }
 
 export interface StaffWithManager extends StaffMember {

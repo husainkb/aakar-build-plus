@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'manager' | 'staff';
+  requiredRole?: 'admin' | 'manager' | 'staff' | 'customer';
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -24,7 +24,8 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
   if (requiredRole && userRole !== requiredRole) {
     const dashboardPath = userRole === 'admin' ? '/admin/dashboard' : 
-                          userRole === 'manager' ? '/manager/dashboard' : '/staff/dashboard';
+                          userRole === 'manager' ? '/manager/dashboard' :
+                          userRole === 'customer' ? '/customer/grievances' : '/staff/dashboard';
     return <Navigate to={dashboardPath} replace />;
   }
 

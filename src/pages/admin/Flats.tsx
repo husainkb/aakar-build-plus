@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Copy, Search, Download, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, Search, Download, Loader2, Key } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
@@ -66,6 +67,7 @@ interface Customer {
 }
 
 export default function Flats() {
+  const { user } = useAuth();
   const [flats, setFlats] = useState<Flat[]>([]);
   const [filteredFlats, setFilteredFlats] = useState<Flat[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +94,8 @@ export default function Flats() {
   const [customerGender, setCustomerGender] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   
@@ -276,6 +280,9 @@ export default function Flats() {
       if (!customerPhone.trim() || customerPhone.length < 10) {
         newErrors.customerPhone = 'Valid phone number is required for booked flats';
       }
+      if (!customerEmail.trim() || !/\S+@\S+\.\S+/.test(customerEmail)) {
+        newErrors.customerEmail = 'Valid email is required for booked flats';
+      }
       const rate = parseFloat(bookingRatePerSqft);
       if (!bookingRatePerSqft || isNaN(rate) || rate <= 0) {
         newErrors.bookingRatePerSqft = 'Booking rate per sqft is required';
@@ -298,16 +305,57 @@ export default function Flats() {
 
     let customerId: string | null = null;
     
-    // If booking, create/update customer first
+    // If booking, create/update customer first, then create auth account
     if (formData.booked_status === 'Booked') {
       try {
         const fullName = `${customerTitle} ${customerName}`.trim();
         customerId = await createOrUpdateCustomer(
           customerPhone,
           fullName,
-          '',
+          customerEmail,
           customerGender
         );
+
+        // Create auth account for customer if new (no existing user_id)
+        if (customerId) {
+          const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('user_id')
+            .eq('id', customerId)
+            .single();
+
+          if (!existingCustomer?.user_id) {
+            // Generate random password
+            const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + '!1';
+            
+            // Create auth user with customer role
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+              email: customerEmail,
+              password,
+              options: {
+                data: {
+                  name: fullName,
+                  role: 'customer',
+                },
+              },
+            });
+
+            if (authError) {
+              console.error('Error creating customer auth account:', authError);
+              // Don't block flat creation if auth fails
+              toast.error('Customer account creation failed: ' + authError.message);
+            } else if (authData.user) {
+              // Link customer record to auth user
+              await supabase
+                .from('customers')
+                .update({ user_id: authData.user.id })
+                .eq('id', customerId);
+
+              setGeneratedPassword(password);
+              toast.success('Customer login account created!');
+            }
+          }
+        }
       } catch (error) {
         toast.error('Failed to save customer details');
         setLoading(false);
@@ -327,6 +375,7 @@ export default function Flats() {
       terrace_area: parseFloat(formData.terrace_area) || 0,
       booked_customer_id: formData.booked_status === 'Booked' ? customerId : null,
       booking_rate_per_sqft: formData.booked_status === 'Booked' ? parseFloat(bookingRatePerSqft) : null,
+      booking_created_by: formData.booked_status === 'Booked' ? user?.id : null,
     };
 
     if (editingFlat) {
@@ -394,6 +443,7 @@ export default function Flats() {
       setCustomerName(extractedName);
       setCustomerGender(customer.gender || '');
       setCustomerPhone(customer.phone_number || '');
+      setCustomerEmail(customer.email || '');
       setBookingRatePerSqft(flat.booking_rate_per_sqft?.toString() || '');
     } else {
       resetCustomerFields();
@@ -443,7 +493,9 @@ export default function Flats() {
     setCustomerName('');
     setCustomerGender('');
     setCustomerPhone('');
+    setCustomerEmail('');
     setBookingRatePerSqft('');
+    setGeneratedPassword('');
     clearCustomer();
     setShowCustomerDropdown(false);
   };
@@ -497,6 +549,7 @@ export default function Flats() {
       setCustomerTitle(extractedTitle);
     }
     setCustomerPhone(customer.phone_number);
+    setCustomerEmail(customer.email || '');
     if (customer.gender) {
       setCustomerGender(customer.gender);
     }
@@ -824,6 +877,20 @@ export default function Flats() {
                         {errors.customerGender && <p className="text-xs text-destructive">{errors.customerGender}</p>}
                       </div>
                       
+                      {/* Email */}
+                      <div className="space-y-2">
+                        <Label htmlFor="customerEmail" className="text-muted-foreground">Email *</Label>
+                        <Input
+                          id="customerEmail"
+                          type="email"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          className={errors.customerEmail ? 'border-destructive' : ''}
+                          placeholder="customer@example.com"
+                        />
+                        {errors.customerEmail && <p className="text-xs text-destructive">{errors.customerEmail}</p>}
+                      </div>
+                      
                       {/* Booking Rate per Sqft */}
                       <div className="space-y-2">
                         <Label htmlFor="bookingRatePerSqft" className="text-muted-foreground">Booking Rate per Sqft *</Label>
@@ -839,6 +906,32 @@ export default function Flats() {
                         />
                         {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                       </div>
+
+                      {/* Generated Password Display */}
+                      {generatedPassword && (
+                        <div className="sm:col-span-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Key className="h-4 w-4 text-green-600" />
+                            <p className="text-sm font-semibold text-green-800 dark:text-green-200">Customer Login Credentials</p>
+                          </div>
+                          <p className="text-sm text-green-700 dark:text-green-300">Email: <strong>{customerEmail}</strong></p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm text-green-700 dark:text-green-300">Password: <strong>{generatedPassword}</strong></p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedPassword);
+                                toast.success('Password copied to clipboard!');
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">Share these credentials with the customer for login access.</p>
+                        </div>
+                      )}
                     </>
                   )}
                   
