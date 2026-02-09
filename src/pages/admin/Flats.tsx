@@ -328,29 +328,22 @@ export default function Flats() {
             // Generate random password
             const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + '!1';
             
-            // Create auth user with customer role
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-              email: customerEmail,
-              password,
-              options: {
-                data: {
-                  name: fullName,
-                  role: 'customer',
-                },
+            // Create auth user via edge function (won't log out current user)
+            const { data: session } = await supabase.auth.getSession();
+            const response = await supabase.functions.invoke('create-customer-account', {
+              body: {
+                email: customerEmail,
+                name: fullName,
+                password,
+                customerId,
               },
             });
 
-            if (authError) {
-              console.error('Error creating customer auth account:', authError);
-              // Don't block flat creation if auth fails
-              toast.error('Customer account creation failed: ' + authError.message);
-            } else if (authData.user) {
-              // Link customer record to auth user
-              await supabase
-                .from('customers')
-                .update({ user_id: authData.user.id })
-                .eq('id', customerId);
-
+            if (response.error || response.data?.error) {
+              const errMsg = response.data?.error || response.error?.message || 'Unknown error';
+              console.error('Error creating customer auth account:', errMsg);
+              toast.error('Customer account creation failed: ' + errMsg);
+            } else {
               setGeneratedPassword(password);
               toast.success('Customer login account created!');
             }
