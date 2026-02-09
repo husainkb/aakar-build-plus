@@ -96,6 +96,7 @@ export default function Flats() {
   const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   
@@ -325,11 +326,10 @@ export default function Flats() {
             .single();
 
           if (!existingCustomer?.user_id) {
-            // Generate random password
-            const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + '!1';
+            // Use the pre-generated password from the form
+            const password = generatedPassword || generatePassword();
             
             // Create auth user via edge function (won't log out current user)
-            const { data: session } = await supabase.auth.getSession();
             const response = await supabase.functions.invoke('create-customer-account', {
               body: {
                 email: customerEmail,
@@ -489,6 +489,7 @@ export default function Flats() {
     setCustomerEmail('');
     setBookingRatePerSqft('');
     setGeneratedPassword('');
+    setIsNewCustomer(false);
     clearCustomer();
     setShowCustomerDropdown(false);
   };
@@ -510,6 +511,16 @@ export default function Flats() {
     resetCustomerFields();
   };
 
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const specials = '@#$!%&';
+    let pwd = '';
+    for (let i = 0; i < 6; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+    pwd += specials[Math.floor(Math.random() * specials.length)];
+    pwd += Math.floor(Math.random() * 90 + 10);
+    return pwd;
+  };
+
   // Handle phone input change with autocomplete search
   const handlePhoneChange = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
@@ -521,7 +532,25 @@ export default function Flats() {
     } else {
       setShowCustomerDropdown(false);
     }
+
+    // If phone is 10 digits and no match found, mark as new customer and generate password
+    if (cleanValue.length >= 10 && matchingCustomers.length === 0 && !isSearching) {
+      if (!isNewCustomer) {
+        setIsNewCustomer(true);
+        setGeneratedPassword(generatePassword());
+      }
+    }
   };
+
+  // Also check after search completes
+  useEffect(() => {
+    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && formData.booked_status === 'Booked') {
+      if (!isNewCustomer) {
+        setIsNewCustomer(true);
+        setGeneratedPassword(generatePassword());
+      }
+    }
+  }, [matchingCustomers, isSearching, customerPhone]);
 
   // Handle selecting a customer from the dropdown
   const handleSelectCustomerFromDropdown = (customer: Customer) => {
@@ -549,6 +578,8 @@ export default function Flats() {
     
     selectCustomer(customer);
     setShowCustomerDropdown(false);
+    setIsNewCustomer(false);
+    setGeneratedPassword('');
     toast.success('Customer details populated!');
   };
 
@@ -900,29 +931,35 @@ export default function Flats() {
                         {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                       </div>
 
-                      {/* Generated Password Display */}
-                      {generatedPassword && (
-                        <div className="sm:col-span-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Key className="h-4 w-4 text-green-600" />
-                            <p className="text-sm font-semibold text-green-800 dark:text-green-200">Customer Login Credentials</p>
-                          </div>
-                          <p className="text-sm text-green-700 dark:text-green-300">Email: <strong>{customerEmail}</strong></p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm text-green-700 dark:text-green-300">Password: <strong>{generatedPassword}</strong></p>
+                      {/* Generated Password Field for New Customers */}
+                      {generatedPassword && isNewCustomer && (
+                        <div className="sm:col-span-2 space-y-2">
+                          <Label className="text-muted-foreground flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Generated Password (New Customer)
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={generatedPassword}
+                              readOnly
+                              className="font-mono text-base tracking-wider"
+                            />
                             <Button
                               type="button"
-                              variant="ghost"
-                              size="sm"
+                              variant="outline"
+                              size="default"
                               onClick={() => {
                                 navigator.clipboard.writeText(generatedPassword);
                                 toast.success('Password copied to clipboard!');
                               }}
                             >
-                              <Copy className="h-3 w-3" />
+                              <Copy className="h-4 w-4 mr-1" />
+                              Copy
                             </Button>
                           </div>
-                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">Share these credentials with the customer for login access.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Copy and share this password with the customer for login access at <strong>/customer/login</strong>.
+                          </p>
                         </div>
                       )}
                     </>
