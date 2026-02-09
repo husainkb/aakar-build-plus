@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, FileText, Share2, UserCheck, UserPlus, Loader2 } from 'lucide-react';
+import { Download, FileText, Share2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { z } from 'zod';
-import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 
 interface PaymentMode {
   text: string;
@@ -81,7 +80,8 @@ const customerSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' }),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number must be at most 15 digits')
+  phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number must be at most 15 digits'),
+  email: z.string().email('Valid email required').or(z.literal('')).optional(),
 });
 
 interface GenerateQuoteProps {
@@ -103,38 +103,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   const [customerName, setCustomerName] = useState<string>('');
   const [customerGender, setCustomerGender] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerEmail, setCustomerEmail] = useState<string>('');
   const [customerErrors, setCustomerErrors] = useState<{ [key: string]: string }>({});
-
-  const {
-    isSearching,
-    matchingCustomers,
-    foundCustomer,
-    customerSelected,
-    searchCustomersByPhone,
-    createOrUpdateCustomer,
-    selectCustomer,
-    clearCustomer
-  } = useCustomerSearch();
-  
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const customerDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Click-away handler for customer dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
-        setShowCustomerDropdown(false);
-      }
-    };
-
-    if (showCustomerDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showCustomerDropdown]);
 
   useEffect(() => {
     fetchBuildings();
@@ -149,7 +119,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   const fetchBuildings = async () => {
     const { data } = await supabase.from('buildings').select('*').order('name');
     if (data) {
-      // Safely parse payment modes from JSON
       const buildingsWithPaymentModes = data.map(building => {
         try {
           let payment_modes: PaymentMode[] = [];
@@ -161,16 +130,10 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
               payment_modes = buildingAny.payment_modes as PaymentMode[];
             }
           }
-          return {
-            ...building,
-            payment_modes
-          };
+          return { ...building, payment_modes };
         } catch (error) {
           console.error('Error parsing payment modes:', error);
-          return {
-            ...building,
-            payment_modes: []
-          };
+          return { ...building, payment_modes: [] };
         }
       });
       setBuildings(buildingsWithPaymentModes);
@@ -178,7 +141,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   };
 
   const fetchFlats = async (buildingId: string) => {
-    // Only fetch non-booked (available) flats
     const { data } = await supabase
       .from('flats')
       .select('*')
@@ -186,8 +148,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
       .order('flat_no');
     
     setFlats(data || []);
-
-    // Check if building has wings
     const wings = data?.map(f => f.wing).filter(w => w) || [];
     const uniqueWings = [...new Set(wings)].sort();
     setHasWings(uniqueWings.length > 0);
@@ -200,8 +160,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     setSelectedFlat('');
     setQuoteData(null);
     setRateError('');
-
-    // Auto-populate rate per sqft from selected building
     const building = buildings.find(b => b.id === value);
     if (building) {
       setRatePerSqft(Number(building.rate_per_sqft));
@@ -211,13 +169,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   const handleRateChange = (value: string) => {
     const newRate = parseFloat(value);
     setRatePerSqft(newRate);
-
-    // Skip minimum rate validation for admin
-    if (skipMinRateValidation) {
-      setRateError('');
-      return;
-    }
-
+    if (skipMinRateValidation) { setRateError(''); return; }
     const building = buildings.find(b => b.id === selectedBuilding);
     if (building && newRate > 0 && newRate < building.minimum_rate_per_sqft) {
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
@@ -226,59 +178,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     }
   };
 
-  // Handle phone input change with autocomplete search
   const handlePhoneChange = (value: string) => {
-    const cleanValue = value.replace(/\D/g, '');
-    setCustomerPhone(cleanValue);
-    
-    // Trigger autocomplete search
-    if (cleanValue.length >= 3) {
-      searchCustomersByPhone(cleanValue);
-      setShowCustomerDropdown(true);
-    } else {
-      setShowCustomerDropdown(false);
-    }
-  };
-
-  // Handle selecting a customer from the dropdown
-  const handleSelectCustomerFromDropdown = (customer: { id: string; name: string; email: string; phone_number: string; gender?: string | null }) => {
-    // Parse customer name to extract title if present
-    const name = customer.name;
-    const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
-    let extractedTitle = '';
-    let extractedName = name;
-
-    for (const prefix of titlePrefixes) {
-      if (name.startsWith(prefix + ' ')) {
-        extractedTitle = prefix;
-        extractedName = name.substring(prefix.length + 1);
-        break;
-      }
-    }
-
-    setCustomerName(extractedName || customer.name);
-    if (extractedTitle) {
-      setCustomerTitle(extractedTitle);
-    }
-    setCustomerPhone(customer.phone_number);
-    
-    // Populate gender if available
-    if (customer.gender) {
-      setCustomerGender(customer.gender);
-    }
-    
-    selectCustomer(customer);
-    setShowCustomerDropdown(false);
-    toast.success('Customer details populated!');
-  };
-
-  const handleClearCustomer = () => {
-    clearCustomer();
-    setCustomerTitle('');
-    setCustomerName('');
-    setCustomerGender('');
-    setCustomerPhone('');
-    setShowCustomerDropdown(false);
+    setCustomerPhone(value.replace(/\D/g, ''));
   };
 
   const handleGenerateQuote = async () => {
@@ -397,17 +298,8 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
         return;
       }
 
-      // Create or get customer ID
-      const fullCustomerName = `${customerTitle} ${customerName}`.trim();
-      const customerId = await createOrUpdateCustomer(
-        customerPhone,
-        fullCustomerName,
-        '', // Email can be empty, will use placeholder
-        customerGender // Pass gender to save in customers table
-      );
-
       const { error: insertError } = await supabase.from('quotes').insert({
-        customer_id: customerId,
+        customer_id: null,
         customer_title: customerTitle,
         customer_name: customerName,
         customer_gender: customerGender,
@@ -1064,97 +956,44 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Phone Number Search with Autocomplete */}
-              <div className="space-y-2" ref={customerDropdownRef}>
+              {/* Phone Number - Manual Input Only */}
+              <div className="space-y-2">
                 <Label htmlFor="customerPhone">Phone Number *</Label>
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <Input
-                      id="customerPhone"
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => handlePhoneChange(e.target.value)}
-                      onFocus={() => {
-                        if (matchingCustomers.length > 0) {
-                          setShowCustomerDropdown(true);
-                        }
-                      }}
-                      placeholder="Enter phone number to search"
-                      className={customerErrors.phone ? 'border-red-500 flex-1' : 'flex-1'}
-                      maxLength={15}
-                      disabled={customerSelected}
-                    />
-                    {isSearching && (
-                      <div className="flex items-center px-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Customer Autocomplete Dropdown */}
-                  {showCustomerDropdown && matchingCustomers.length > 0 && !customerSelected && (
-                    <div className="absolute z-50 w-full mt-1 bg-popover border border-input rounded-md shadow-lg max-h-60 overflow-auto">
-                      {matchingCustomers.map((customer) => (
-                        <button
-                          key={customer.id}
-                          type="button"
-                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground flex items-center justify-between border-b border-input last:border-b-0"
-                          onClick={() => handleSelectCustomerFromDropdown(customer)}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">{customer.name}</span>
-                            <span className="text-sm text-muted-foreground">{customer.phone_number}</span>
-                          </div>
-                          <UserCheck className="h-4 w-4 text-green-600" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <Input
+                  id="customerPhone"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="Enter phone number"
+                  className={customerErrors.phone ? 'border-destructive' : ''}
+                  maxLength={15}
+                />
                 {customerErrors.phone && (
-                  <p className="text-sm text-red-500">{customerErrors.phone}</p>
+                  <p className="text-sm text-destructive">{customerErrors.phone}</p>
                 )}
               </div>
 
-              {/* Selected Customer Badge */}
-              {customerSelected && foundCustomer && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm text-blue-700 dark:text-blue-400">
-                        Selected: <strong>{foundCustomer.name}</strong> ({foundCustomer.phone_number})
-                      </span>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={handleClearCustomer}
-                      className="text-blue-600 hover:bg-blue-50"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* New Customer Badge - only show when phone is 10+ digits and no matches found */}
-              {!customerSelected && customerPhone.length >= 10 && !isSearching && matchingCustomers.length === 0 && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm text-amber-700 dark:text-amber-400">
-                      New customer - please enter details below
-                    </span>
-                  </div>
-                </div>
-              )}
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="customerEmail">Email</Label>
+                <Input
+                  id="customerEmail"
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="Enter email address"
+                  className={customerErrors.email ? 'border-destructive' : ''}
+                />
+                {customerErrors.email && (
+                  <p className="text-sm text-destructive">{customerErrors.email}</p>
+                )}
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="customerTitle">Title *</Label>
                   <Select value={customerTitle} onValueChange={setCustomerTitle}>
-                    <SelectTrigger className={customerErrors.title ? 'border-red-500' : ''}>
+                    <SelectTrigger className={customerErrors.title ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Select title" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1165,13 +1004,13 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                     </SelectContent>
                   </Select>
                   {customerErrors.title && (
-                    <p className="text-sm text-red-500">{customerErrors.title}</p>
+                    <p className="text-sm text-destructive">{customerErrors.title}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customerGender">Gender *</Label>
                   <Select value={customerGender} onValueChange={setCustomerGender}>
-                    <SelectTrigger className={customerErrors.gender ? 'border-red-500' : ''}>
+                    <SelectTrigger className={customerErrors.gender ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1181,7 +1020,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                     </SelectContent>
                   </Select>
                   {customerErrors.gender && (
-                    <p className="text-sm text-red-500">{customerErrors.gender}</p>
+                    <p className="text-sm text-destructive">{customerErrors.gender}</p>
                   )}
                 </div>
               </div>
@@ -1192,11 +1031,11 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="Enter customer name"
-                  className={customerErrors.name ? 'border-red-500' : ''}
+                  className={customerErrors.name ? 'border-destructive' : ''}
                   maxLength={100}
                 />
                 {customerErrors.name && (
-                  <p className="text-sm text-red-500">{customerErrors.name}</p>
+                  <p className="text-sm text-destructive">{customerErrors.name}</p>
                 )}
               </div>
             </CardContent>

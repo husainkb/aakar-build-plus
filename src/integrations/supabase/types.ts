@@ -77,6 +77,7 @@ export type Database = {
           name: string
           phone_number: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -86,6 +87,7 @@ export type Database = {
           name: string
           phone_number: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -95,6 +97,7 @@ export type Database = {
           name?: string
           phone_number?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -183,6 +186,7 @@ export type Database = {
         Row: {
           booked_customer_id: string | null
           booked_status: string
+          booking_created_by: string | null
           booking_rate_per_sqft: number | null
           building_id: string
           created_at: string
@@ -200,6 +204,7 @@ export type Database = {
         Insert: {
           booked_customer_id?: string | null
           booked_status: string
+          booking_created_by?: string | null
           booking_rate_per_sqft?: number | null
           building_id: string
           created_at?: string
@@ -217,6 +222,7 @@ export type Database = {
         Update: {
           booked_customer_id?: string | null
           booked_status?: string
+          booking_created_by?: string | null
           booking_rate_per_sqft?: number | null
           building_id?: string
           created_at?: string
@@ -581,7 +587,7 @@ export type Database = {
       is_staff_or_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "staff" | "manager"
+      app_role: "admin" | "staff" | "manager" | "customer"
       ticket_priority: "low" | "medium" | "high" | "urgent"
       ticket_status: "new" | "open" | "in_progress" | "resolved" | "closed"
     }
@@ -711,7 +717,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "manager"],
+      app_role: ["admin", "staff", "manager", "customer"],
       ticket_priority: ["low", "medium", "high", "urgent"],
       ticket_status: ["new", "open", "in_progress", "resolved", "closed"],
     },
