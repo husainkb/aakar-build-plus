@@ -185,15 +185,10 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
       .eq('building_id', buildingId)
       .order('flat_no');
     
-    // Filter out booked flats (case-insensitive check)
-    const availableFlats = data?.filter(flat => 
-      flat.booked_status.toLowerCase() !== 'booked'
-    ) || [];
-    
-    setFlats(availableFlats);
+    setFlats(data || []);
 
-    // Check if building has wings - only from available flats
-    const wings = availableFlats?.map(f => f.wing).filter(w => w) || [];
+    // Check if building has wings
+    const wings = data?.map(f => f.wing).filter(w => w) || [];
     const uniqueWings = [...new Set(wings)].sort();
     setHasWings(uniqueWings.length > 0);
     setAvailableWings(uniqueWings);
@@ -323,18 +318,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     const flat = flats.find(f => f.id === selectedFlat);
 
     if (!building || !flat) return;
-
-    // Double-check that the flat is not booked (backend validation - case insensitive)
-    const { data: flatCheck } = await supabase
-      .from('flats')
-      .select('booked_status')
-      .eq('id', selectedFlat)
-      .single();
-
-    if (flatCheck?.booked_status?.toLowerCase() === 'booked') {
-      toast.error('This flat is already booked and cannot be quoted.');
-      return;
-    }
 
     // Validate rate per sqft against minimum (skip for admin)
     if (!skipMinRateValidation && ratePerSqft < building.minimum_rate_per_sqft) {
