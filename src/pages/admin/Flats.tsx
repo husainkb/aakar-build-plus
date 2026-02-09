@@ -980,6 +980,17 @@ export default function Flats() {
                           </div>
                         </div>
                       )}
+
+                      {/* Existing Customer Indicator */}
+                      {!isNewCustomer && customerPhone.length >= 10 && customerEmail && !generatedPassword && (
+                        <div className="sm:col-span-2 p-3 bg-muted rounded-md text-sm space-y-1">
+                          <p className="font-semibold flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Existing Customer — Account already created
+                          </p>
+                          <p className="text-muted-foreground">This customer already has a login account. No new password will be generated.</p>
+                        </div>
+                      )}
                     </>
                   )}
                   
