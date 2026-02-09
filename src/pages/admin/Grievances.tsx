@@ -588,9 +588,9 @@ export default function GrievancesPage() {
                         <div className="space-y-2">
                           <Label>Wing</Label>
                           <Select
-                            value={selectedWing || (availableWings.length > 1 ? "all" : availableWings[0])}
+                            value={selectedWing || availableWings[0]}
                             onValueChange={(value) => {
-                              setSelectedWing(value === "all" ? "" : value);
+                              setSelectedWing(value);
                               setFormData(prev => ({ ...prev, flat_id: '' }));
                             }}
                             disabled={!formData.building_id}
@@ -599,9 +599,6 @@ export default function GrievancesPage() {
                               <SelectValue placeholder="Select wing" />
                             </SelectTrigger>
                             <SelectContent>
-                              {availableWings.length > 1 && (
-                                <SelectItem value="all">All Wings</SelectItem>
-                              )}
                               {availableWings.map((wing) => (
                                 <SelectItem key={wing} value={wing}>
                                   {wing}
