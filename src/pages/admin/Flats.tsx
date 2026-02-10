@@ -34,6 +34,7 @@ interface Flat {
   buildings?: { name: string };
   booked_customer_id?: string | null;
   booking_rate_per_sqft?: number | null;
+  booking_created_by?: string | null;
   customers?: {
     id: string;
     name: string;
@@ -369,7 +370,7 @@ export default function Flats() {
       terrace_area: parseFloat(formData.terrace_area) || 0,
       booked_customer_id: formData.booked_status === 'Booked' ? customerId : null,
       booking_rate_per_sqft: formData.booked_status === 'Booked' ? parseFloat(bookingRatePerSqft) : null,
-      booking_created_by: formData.booked_status === 'Booked' ? user?.id : null,
+      booking_created_by: formData.booked_status === 'Booked' ? (editingFlat?.booking_created_by || user?.id) : null,
     };
 
     if (editingFlat) {

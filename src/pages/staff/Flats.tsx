@@ -52,6 +52,7 @@ interface Flat {
   buildings?: { name: string };
   booked_customer_id?: string | null;
   booking_rate_per_sqft?: number | null;
+  booking_created_by?: string | null;
   customers?: Customer | null;
 }
 
@@ -300,7 +301,7 @@ export default function StaffFlats() {
         booked_status: bookedStatus,
         booked_customer_id: bookedStatus === 'Booked' ? customerId : null,
         booking_rate_per_sqft: bookedStatus === 'Booked' ? parseFloat(bookingRatePerSqft) : null,
-        booking_created_by: bookedStatus === 'Booked' ? user?.id : null,
+        booking_created_by: bookedStatus === 'Booked' ? (editingFlat.booking_created_by || user?.id) : null,
       })
       .eq('id', editingFlat.id);
 
