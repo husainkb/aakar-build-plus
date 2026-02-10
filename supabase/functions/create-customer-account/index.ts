@@ -77,10 +77,16 @@ Deno.serve(async (req) => {
 
         if (existingUser) {
           // Update password and metadata for existing user
-          await adminClient.auth.admin.updateUser(existingUser.id, {
+          const { error: updateError } = await adminClient.auth.admin.updateUserById(existingUser.id, {
             password,
             user_metadata: { name, role: "customer", phone_number: phoneNumber || "" },
           });
+          if (updateError) {
+            return new Response(JSON.stringify({ error: updateError.message }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           userId = existingUser.id;
         } else {
           return new Response(JSON.stringify({ error: createError.message }), {
