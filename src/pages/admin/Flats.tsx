@@ -933,8 +933,8 @@ export default function Flats() {
                         {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                       </div>
 
-                      {/* Password & Credentials for New Customers */}
-                      {generatedPassword && isNewCustomer && (
+                      {/* Password & Credentials for New Customers - Only show when creating new flat */}
+                      {generatedPassword && isNewCustomer && !editingFlat && (
                         <div className="sm:col-span-2 space-y-3">
                           <Label className="text-muted-foreground flex items-center gap-2">
                             <Key className="h-4 w-4" />
