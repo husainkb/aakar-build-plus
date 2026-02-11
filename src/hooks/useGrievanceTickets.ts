@@ -309,6 +309,32 @@ export function useGrievanceTickets() {
     }
   }, [fetchTickets]);
 
+  const assignTicket = useCallback(async (ticketId: string, staffId: string | null): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('grievance_tickets')
+        .update({
+          assigned_staff_id: staffId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ticketId);
+
+      if (error) {
+        console.error('Error assigning ticket:', error);
+        toast.error('Failed to assign ticket');
+        return false;
+      }
+
+      toast.success(staffId ? 'Ticket assigned successfully' : 'Ticket unassigned');
+      await fetchTickets();
+      return true;
+    } catch (error) {
+      console.error('Error assigning ticket:', error);
+      toast.error('Failed to assign ticket');
+      return false;
+    }
+  }, [fetchTickets]);
+
   return {
     tickets,
     overdueTickets,
@@ -319,6 +345,7 @@ export function useGrievanceTickets() {
     createTicket,
     updateTicketStatus,
     deleteTicket,
+    assignTicket,
     logEscalation,
     checkAndEscalateOverdue,
   };
