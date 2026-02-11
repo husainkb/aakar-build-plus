@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -377,7 +377,7 @@ export default function StaffFlats() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Flats</h1>
@@ -597,6 +597,6 @@ export default function StaffFlats() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

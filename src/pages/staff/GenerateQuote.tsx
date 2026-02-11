@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -939,7 +939,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     : flats;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Generate Quote</h1>
@@ -1312,6 +1312,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
           </Card>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

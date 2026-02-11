@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Lock } from 'lucide-react';
 
 export default function ChangePassword() {
@@ -53,8 +53,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -112,6 +111,5 @@ export default function ChangePassword() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }
