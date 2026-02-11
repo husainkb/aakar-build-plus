@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, Home, TrendingUp, Users } from 'lucide-react';
 
@@ -50,8 +50,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
+    <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
@@ -93,6 +92,5 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }

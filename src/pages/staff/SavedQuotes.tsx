@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Trash2, Loader2 } from 'lucide-react';
@@ -328,7 +328,7 @@ export default function SavedQuotes() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6 px-2 sm:px-6 md:px-8 lg:px-10 xl:px-16">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Saved Quotes</h1>
@@ -407,7 +407,7 @@ export default function SavedQuotes() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
@@ -59,8 +59,7 @@ export default function ManagerDashboard() {
   const totalQuoteValue = staffQuotes?.reduce((sum, q) => sum + Number(q.total_amount), 0) || 0;
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Manager Dashboard</h1>
           <p className="text-muted-foreground">Overview of your team's performance</p>
@@ -127,6 +126,5 @@ export default function ManagerDashboard() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }

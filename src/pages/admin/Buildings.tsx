@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -332,7 +332,7 @@ export default function Buildings() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6 px-2 sm:px-4 md:px-8 lg:px-10 xl:px-16 max-w-screen-xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
@@ -654,6 +654,6 @@ export default function Buildings() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
