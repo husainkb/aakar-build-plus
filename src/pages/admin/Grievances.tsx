@@ -46,7 +46,7 @@ import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/useGrievanceTickets';
 import { useStaffMembers } from '@/hooks/useStaffMembers';
 import { toast } from 'sonner';
-import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User, Eye } from 'lucide-react';
+import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User, Eye, UserPlus } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
@@ -105,6 +105,7 @@ export default function GrievancesPage() {
     createTicket,
     updateTicketStatus,
     deleteTicket,
+    assignTicket,
     fetchEscalationLogs,
     escalationLogs,
   } = useGrievanceTickets();
@@ -123,9 +124,11 @@ export default function GrievancesPage() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<GrievanceTicket | null>(null);
   const [newStatus, setNewStatus] = useState<GrievanceTicket['status']>('open');
   const [resolutionNote, setResolutionNote] = useState('');
+  const [assignStaffId, setAssignStaffId] = useState('');
   const [phoneSearch, setPhoneSearch] = useState('');
   const [customerFlats, setCustomerFlats] = useState<(Flat & { building?: Building })[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -323,6 +326,25 @@ export default function GrievancesPage() {
     setSelectedTicket(ticket);
     await fetchEscalationLogs(ticket.id);
     setIsHistoryOpen(true);
+  };
+
+  const openAssignDialog = (ticket: GrievanceTicket) => {
+    setSelectedTicket(ticket);
+    setAssignStaffId(ticket.assigned_staff_id || 'none');
+    setIsAssignOpen(true);
+  };
+
+  const handleAssignTicket = async () => {
+    if (!selectedTicket) return;
+    setSubmitting(true);
+    const staffId = assignStaffId === 'none' ? null : assignStaffId;
+    const success = await assignTicket(selectedTicket.id, staffId);
+    setSubmitting(false);
+    if (success) {
+      setIsAssignOpen(false);
+      setSelectedTicket(null);
+      setAssignStaffId('');
+    }
   };
 
   const handleDownloadQuote = async (ticket: GrievanceTicket) => {
@@ -878,6 +900,14 @@ export default function GrievancesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => openAssignDialog(ticket)}
+                                  title="Assign Staff"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => openStatusDialog(ticket)}
                                 >
                                   <CheckCircle className="h-4 w-4" />
@@ -1147,6 +1177,63 @@ export default function GrievancesPage() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+        {/* Assign Ticket Dialog */}
+        <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Ticket</DialogTitle>
+            </DialogHeader>
+            {selectedTicket && (
+              <div className="space-y-4 py-4">
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="font-medium">{selectedTicket.ticket_number}</p>
+                  <p className="text-sm text-muted-foreground">{selectedTicket.grievance_type}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Current: {selectedTicket.assigned_staff?.name || 'Unassigned'}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Assign to Staff</Label>
+                  <Select
+                    value={assignStaffId}
+                    onValueChange={setAssignStaffId}
+                    disabled={staffLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={staffLoading ? 'Loading staff...' : 'Select staff member'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {staffMembers.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>{staff.name}</span>
+                            {staff.manager && (
+                              <span className="text-muted-foreground text-xs">
+                                (Manager: {staff.manager.name})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAssignTicket} disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Assign
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
