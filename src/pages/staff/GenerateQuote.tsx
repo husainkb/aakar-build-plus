@@ -84,11 +84,7 @@ const customerSchema = z.object({
   email: z.string().email('Valid email required').or(z.literal('')).optional(),
 });
 
-interface GenerateQuoteProps {
-  skipMinRateValidation?: boolean;
-}
-
-export default function GenerateQuote({ skipMinRateValidation = false }: GenerateQuoteProps) {
+export default function GenerateQuote() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<string>('');
@@ -169,7 +165,6 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
   const handleRateChange = (value: string) => {
     const newRate = parseFloat(value);
     setRatePerSqft(newRate);
-    if (skipMinRateValidation) { setRateError(''); return; }
     const building = buildings.find(b => b.id === selectedBuilding);
     if (building && newRate > 0 && newRate < building.minimum_rate_per_sqft) {
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
@@ -221,7 +216,7 @@ export default function GenerateQuote({ skipMinRateValidation = false }: Generat
     if (!building || !flat) return;
 
     // Validate rate per sqft against minimum (skip for admin)
-    if (!skipMinRateValidation && ratePerSqft < building.minimum_rate_per_sqft) {
+    if (ratePerSqft < building.minimum_rate_per_sqft) {
       toast.error(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
       setRateError(`Rate per sqft cannot be less than the minimum allowed rate (₹${building.minimum_rate_per_sqft}) for this building.`);
       return;

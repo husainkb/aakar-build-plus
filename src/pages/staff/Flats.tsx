@@ -61,7 +61,7 @@ export default function StaffFlats() {
   const [flats, setFlats] = useState<Flat[]>([]);
   const [filteredFlats, setFilteredFlats] = useState<Flat[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [buildings, setBuildings] = useState<{ id: string; name: string }[]>([]);
+  const [buildings, setBuildings] = useState<{ id: string; name: string; minimum_rate_per_sqft: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFlat, setEditingFlat] = useState<Flat | null>(null);
@@ -79,6 +79,7 @@ export default function StaffFlats() {
   const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const customerLoadedRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const {
@@ -118,7 +119,7 @@ export default function StaffFlats() {
   }, [searchTerm, flats]);
 
   const fetchBuildings = async () => {
-    const { data } = await supabase.from('buildings').select('id, name').order('name');
+    const { data } = await supabase.from('buildings').select('id, name, minimum_rate_per_sqft').order('name');
     setBuildings(data || []);
   };
 
@@ -153,6 +154,8 @@ export default function StaffFlats() {
       setCustomerGender(customer.gender || '');
       setCustomerPhone(customer.phone_number || '');
       setCustomerEmail(customer.email || '');
+      setIsNewCustomer(false);
+      customerLoadedRef.current = true;
     } else {
       resetCustomerFields();
     }
@@ -169,6 +172,7 @@ export default function StaffFlats() {
     setBookingRatePerSqft('');
     setGeneratedPassword('');
     setIsNewCustomer(false);
+    customerLoadedRef.current = false;
     clearCustomer();
     setShowCustomerDropdown(false);
   };
@@ -180,6 +184,7 @@ export default function StaffFlats() {
   const handlePhoneChange = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
     setCustomerPhone(cleanValue);
+    customerLoadedRef.current = false;
     if (cleanValue.length >= 3) {
       searchCustomersByPhone(cleanValue);
       setShowCustomerDropdown(true);
@@ -196,7 +201,7 @@ export default function StaffFlats() {
 
   // Check after search completes
   useEffect(() => {
-    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && bookedStatus === 'Booked') {
+    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && bookedStatus === 'Booked' && !customerLoadedRef.current) {
       if (!isNewCustomer) {
         setIsNewCustomer(true);
       }
@@ -222,6 +227,7 @@ export default function StaffFlats() {
     selectCustomer(customer);
     setShowCustomerDropdown(false);
     setIsNewCustomer(false);
+    customerLoadedRef.current = true;
     setGeneratedPassword('');
     toast.success('Customer details populated!');
   };
@@ -240,7 +246,14 @@ export default function StaffFlats() {
       if (!customerPhone.trim() || customerPhone.length < 10) newErrors.customerPhone = 'Valid phone required';
       if (!customerEmail.trim()) newErrors.customerEmail = 'Email is required';
       const rate = parseFloat(bookingRatePerSqft);
-      if (!bookingRatePerSqft || isNaN(rate) || rate <= 0) newErrors.bookingRatePerSqft = 'Valid rate required';
+      if (!bookingRatePerSqft || isNaN(rate) || rate <= 0) {
+        newErrors.bookingRatePerSqft = 'Valid rate required';
+      } else {
+        const building = buildings.find(b => b.id === editingFlat.building_id);
+        if (building && building.minimum_rate_per_sqft > 0 && rate < building.minimum_rate_per_sqft) {
+          newErrors.bookingRatePerSqft = `Rate cannot be less than minimum ₹${building.minimum_rate_per_sqft}`;
+        }
+      }
     }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) { toast.error('Please fix errors'); return; }
@@ -435,7 +448,7 @@ export default function StaffFlats() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="p-3 bg-muted rounded-md text-sm space-y-1">
                   <p><strong>Building:</strong> {editingFlat.buildings?.name}</p>
-                  <p><strong>Flat:</strong> {editingFlat.wing ? `${editingFlat.wing}-` : ''}${editingFlat.flat_no}</p>
+                  <p><strong>Flat:</strong> {editingFlat.wing ? `${editingFlat.wing}-` : ''}{editingFlat.flat_no}</p>
                   <p><strong>Floor:</strong> {editingFlat.floor} | <strong>Sqft:</strong> {editingFlat.square_foot}</p>
                 </div>
 
