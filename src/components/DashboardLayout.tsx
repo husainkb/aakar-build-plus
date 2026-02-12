@@ -62,6 +62,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   ];
 
   const customerLinks = [
+    { href: '/customer/bookings', label: 'My Bookings', icon: Home },
     { href: '/customer/grievances', label: 'My Grievances', icon: MessageSquareWarning },
     { href: '/customer/change-password', label: 'Change Password', icon: Lock },
   ];

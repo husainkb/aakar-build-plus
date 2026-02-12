@@ -29,6 +29,7 @@ import SavedQuotes from "./pages/staff/SavedQuotes";
 import StaffReports from "./pages/staff/Reports";
 import StaffGrievances from "./pages/staff/Grievances";
 import CustomerGrievances from "./pages/customer/Grievances";
+import CustomerBookings from "./pages/customer/Bookings";
 import ChangePassword from "./pages/shared/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/auth/Signup";
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/staff/change-password" element={<ProtectedRoute requiredRole="staff"><ChangePassword /></ProtectedRoute>} />
               {/* Customer Routes */}
               <Route path="/customer/grievances" element={<ProtectedRoute requiredRole="customer"><CustomerGrievances /></ProtectedRoute>} />
+              <Route path="/customer/bookings" element={<ProtectedRoute requiredRole="customer"><CustomerBookings /></ProtectedRoute>} />
               <Route path="/customer/change-password" element={<ProtectedRoute requiredRole="customer"><ChangePassword /></ProtectedRoute>} />
             </Route>
 
