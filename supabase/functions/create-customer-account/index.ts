@@ -5,6 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple validation helpers
+const isValidEmail = (email: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 255;
+
+const isValidUUID = (id: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+const isValidPhone = (phone: string): boolean =>
+  /^\+?[0-9]{7,15}$/.test(phone);
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -48,7 +58,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, name, password, customerId, phoneNumber } = await req.json();
+    const body = await req.json();
+    const { email, name, password, customerId, phoneNumber } = body;
+
+    // Server-side input validation
+    const errors: string[] = [];
+    if (!email || typeof email !== "string" || !isValidEmail(email)) {
+      errors.push("Invalid email format");
+    }
+    if (!name || typeof name !== "string" || name.trim().length === 0 || name.length > 100) {
+      errors.push("Name must be 1-100 characters");
+    }
+    if (!password || typeof password !== "string" || password.length < 8 || password.length > 128) {
+      errors.push("Password must be 8-128 characters");
+    }
+    if (!customerId || typeof customerId !== "string" || !isValidUUID(customerId)) {
+      errors.push("Invalid customer ID format");
+    }
+    if (phoneNumber && (typeof phoneNumber !== "string" || !isValidPhone(phoneNumber))) {
+      errors.push("Invalid phone number format");
+    }
+
+    if (errors.length > 0) {
+      return new Response(JSON.stringify({ error: "Validation failed", details: errors }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!email || !name || !password || !customerId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -117,7 +153,8 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("create-customer-account error:", error);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
