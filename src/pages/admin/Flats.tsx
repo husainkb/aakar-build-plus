@@ -327,10 +327,8 @@ export default function Flats() {
             .single();
 
           if (!existingCustomer?.user_id) {
-            // Use the pre-generated password from the form
-            const password = generatedPassword || generatePassword();
+            const password = DEFAULT_CUSTOMER_PASSWORD;
             
-            // Create auth user via edge function (won't log out current user)
             const response = await supabase.functions.invoke('create-customer-account', {
               body: {
                 email: customerEmail,
@@ -346,7 +344,6 @@ export default function Flats() {
               console.error('Error creating customer auth account:', errMsg);
               toast.error('Customer account creation failed: ' + errMsg);
             } else {
-              setGeneratedPassword(password);
               toast.success('Customer login account created!');
             }
           }
@@ -513,15 +510,7 @@ export default function Flats() {
     resetCustomerFields();
   };
 
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    const specials = '@#$!%&';
-    let pwd = '';
-    for (let i = 0; i < 6; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
-    pwd += specials[Math.floor(Math.random() * specials.length)];
-    pwd += Math.floor(Math.random() * 90 + 10);
-    return pwd;
-  };
+  const DEFAULT_CUSTOMER_PASSWORD = 'Pass%word@123';
 
   // Handle phone input change with autocomplete search
   const handlePhoneChange = (value: string) => {
@@ -535,11 +524,9 @@ export default function Flats() {
       setShowCustomerDropdown(false);
     }
 
-    // If phone is 10 digits and no match found, mark as new customer and generate password
     if (cleanValue.length >= 10 && matchingCustomers.length === 0 && !isSearching) {
       if (!isNewCustomer) {
         setIsNewCustomer(true);
-        setGeneratedPassword(generatePassword());
       }
     }
   };
@@ -549,7 +536,6 @@ export default function Flats() {
     if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && formData.booked_status === 'Booked') {
       if (!isNewCustomer) {
         setIsNewCustomer(true);
-        setGeneratedPassword(generatePassword());
       }
     }
   }, [matchingCustomers, isSearching, customerPhone]);
@@ -933,63 +919,24 @@ export default function Flats() {
                         {errors.bookingRatePerSqft && <p className="text-xs text-destructive">{errors.bookingRatePerSqft}</p>}
                       </div>
 
-                      {/* Password & Credentials for New Customers - Only show when creating new flat */}
-                      {generatedPassword && isNewCustomer && !editingFlat && (
-                        <div className="sm:col-span-2 space-y-3">
-                          <Label className="text-muted-foreground flex items-center gap-2">
+                      {/* New Customer Indicator */}
+                      {isNewCustomer && customerPhone.length >= 10 && !editingFlat && (
+                        <div className="sm:col-span-2 p-3 bg-muted rounded-md text-sm space-y-1">
+                          <p className="font-semibold flex items-center gap-2">
                             <Key className="h-4 w-4" />
-                            Password (New Customer)
-                          </Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={generatedPassword}
-                              onChange={(e) => setGeneratedPassword(e.target.value)}
-                              className="font-mono text-base tracking-wider"
-                              placeholder="Enter or edit password"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="default"
-                              onClick={() => {
-                                navigator.clipboard.writeText(generatedPassword);
-                                toast.success('Password copied to clipboard!');
-                              }}
-                            >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Copy
-                            </Button>
-                          </div>
-                          <div className="p-3 bg-muted rounded-md text-sm space-y-1">
-                            <p><strong>Login Email:</strong> {customerEmail}</p>
-                            <p><strong>Login Phone:</strong> {customerPhone}</p>
-                            <p><strong>Password:</strong> {generatedPassword}</p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => {
-                                const text = `Customer Login Credentials\nEmail: ${customerEmail}\nPhone: ${customerPhone}\nPassword: ${generatedPassword}\nLogin URL: /customer/login`;
-                                navigator.clipboard.writeText(text);
-                                toast.success('All credentials copied to clipboard!');
-                              }}
-                            >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Copy All Credentials
-                            </Button>
-                          </div>
+                            New Customer — Account will be created with default password
+                          </p>
                         </div>
                       )}
 
                       {/* Existing Customer Indicator */}
-                      {!isNewCustomer && customerPhone.length >= 10 && customerEmail && !generatedPassword && (
+                      {!isNewCustomer && customerPhone.length >= 10 && customerEmail && (
                         <div className="sm:col-span-2 p-3 bg-muted rounded-md text-sm space-y-1">
                           <p className="font-semibold flex items-center gap-2">
                             <Key className="h-4 w-4" />
                             Existing Customer — Account already created
                           </p>
-                          <p className="text-muted-foreground">This customer already has a login account. No new password will be generated.</p>
+                          <p className="text-muted-foreground">This customer already has a login account.</p>
                         </div>
                       )}
                     </>
