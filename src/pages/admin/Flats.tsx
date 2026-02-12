@@ -18,6 +18,7 @@ import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 interface Building {
   id: string;
   name: string;
+  minimum_rate_per_sqft?: number;
 }
 
 interface Flat {
@@ -100,6 +101,7 @@ export default function Flats() {
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const customerLoadedRef = useRef(false);
   
   const {
     isSearching,
@@ -153,7 +155,7 @@ export default function Flats() {
   const fetchBuildings = async () => {
     const { data, error } = await supabase
       .from('buildings')
-      .select('id, name')
+      .select('id, name, minimum_rate_per_sqft')
       .order('name');
 
     if (error) {
@@ -288,6 +290,11 @@ export default function Flats() {
       const rate = parseFloat(bookingRatePerSqft);
       if (!bookingRatePerSqft || isNaN(rate) || rate <= 0) {
         newErrors.bookingRatePerSqft = 'Booking rate per sqft is required';
+      } else {
+        const building = buildings.find(b => b.id === formData.building_id);
+        if (building && building.minimum_rate_per_sqft && rate < building.minimum_rate_per_sqft) {
+          newErrors.bookingRatePerSqft = `Rate cannot be less than minimum ₹${building.minimum_rate_per_sqft}`;
+        }
       }
     }
 
@@ -437,6 +444,8 @@ export default function Flats() {
       setCustomerPhone(customer.phone_number || '');
       setCustomerEmail(customer.email || '');
       setBookingRatePerSqft(flat.booking_rate_per_sqft?.toString() || '');
+      setIsNewCustomer(false);
+      customerLoadedRef.current = true;
     } else {
       resetCustomerFields();
     }
@@ -489,6 +498,7 @@ export default function Flats() {
     setBookingRatePerSqft('');
     setGeneratedPassword('');
     setIsNewCustomer(false);
+    customerLoadedRef.current = false;
     clearCustomer();
     setShowCustomerDropdown(false);
   };
@@ -516,6 +526,7 @@ export default function Flats() {
   const handlePhoneChange = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
     setCustomerPhone(cleanValue);
+    customerLoadedRef.current = false;
     
     if (cleanValue.length >= 3) {
       searchCustomersByPhone(cleanValue);
@@ -533,7 +544,7 @@ export default function Flats() {
 
   // Also check after search completes
   useEffect(() => {
-    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && formData.booked_status === 'Booked') {
+    if (customerPhone.length >= 10 && matchingCustomers.length === 0 && !isSearching && formData.booked_status === 'Booked' && !customerLoadedRef.current) {
       if (!isNewCustomer) {
         setIsNewCustomer(true);
       }
@@ -567,6 +578,7 @@ export default function Flats() {
     selectCustomer(customer);
     setShowCustomerDropdown(false);
     setIsNewCustomer(false);
+    customerLoadedRef.current = true;
     setGeneratedPassword('');
     toast.success('Customer details populated!');
   };
@@ -920,7 +932,7 @@ export default function Flats() {
                       </div>
 
                       {/* New Customer Indicator */}
-                      {isNewCustomer && customerPhone.length >= 10 && !editingFlat && (
+                      {isNewCustomer && customerPhone.length >= 10 && (
                         <div className="sm:col-span-2 p-3 bg-muted rounded-md text-sm space-y-1">
                           <p className="font-semibold flex items-center gap-2">
                             <Key className="h-4 w-4" />
