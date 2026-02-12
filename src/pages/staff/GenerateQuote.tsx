@@ -141,6 +141,7 @@ export default function GenerateQuote() {
       .from('flats')
       .select('*')
       .eq('building_id', buildingId)
+      .neq('booked_status', 'Booked')
       .order('flat_no');
     
     setFlats(data || []);
