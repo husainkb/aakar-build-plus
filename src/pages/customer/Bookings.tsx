@@ -6,8 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
+import { toast } from 'sonner';
 
 interface BookingFlat {
   id: string;
@@ -21,14 +23,20 @@ interface BookingFlat {
   booking_rate_per_sqft: number | null;
   created_at: string;
   flat_experience: string | null;
+  booking_created_by: string | null;
   building: {
     id: string;
     name: string;
   } | null;
-  booking_staff: {
-    id: string;
-    name: string;
-  } | null;
+}
+
+interface CreatorInfo {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  manager_name?: string;
+  manager_email?: string;
 }
 
 interface GrievanceTicket {
@@ -40,20 +48,35 @@ interface GrievanceTicket {
   created_at: string;
 }
 
+interface BuildingDetails {
+  id: string;
+  name: string;
+  rate_per_sqft: number;
+  maintenance: number;
+  electrical_water_charges: number;
+  registration_charges: number;
+  gst_tax: number;
+  stamp_duty: number;
+  legal_charges: number;
+  other_charges: number;
+  payment_modes?: { text: string; value: number }[];
+}
+
 export default function CustomerBookings() {
   const { user } = useAuth();
-  const [bookings, setBookings] = useState<BookingFlat[]>([]);
+  const [bookings, setBookings] = useState<(BookingFlat & { creator?: CreatorInfo })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBooking, setSelectedBooking] = useState<BookingFlat | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<(BookingFlat & { creator?: CreatorInfo }) | null>(null);
   const [relatedTickets, setRelatedTickets] = useState<GrievanceTicket[]>([]);
-  const [customerRecord, setCustomerRecord] = useState<{ id: string } | null>(null);
+  const [customerRecord, setCustomerRecord] = useState<{ id: string; name: string; gender?: string | null } | null>(null);
+  const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const fetchCustomer = async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id')
+        .select('id, name, gender')
         .eq('user_id', user.id)
         .maybeSingle();
       setCustomerRecord(data);
@@ -75,36 +98,77 @@ export default function CustomerBookings() {
         .eq('booked_customer_id', customerRecord.id)
         .eq('booked_status', 'Booked')
         .order('created_at', { ascending: false });
-      
+
       const flatsData = (data || []) as any[];
-      
-      // Fetch staff names for booking_created_by
+
+      // Fetch creator profiles (name, email, role) and their managers
       const staffIds = [...new Set(flatsData.map(f => f.booking_created_by).filter(Boolean))];
-      let staffMap: Record<string, string> = {};
+      const enriched: (BookingFlat & { creator?: CreatorInfo })[] = [];
+
+      let profileMap: Record<string, { id: string; name: string; email: string; role: string }> = {};
       if (staffIds.length > 0) {
-        const { data: staffData } = await supabase
-          .from('profiles_public')
-          .select('id, name')
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email, role')
           .in('id', staffIds);
-        if (staffData) {
-          staffMap = Object.fromEntries(staffData.map(s => [s.id!, s.name!]));
+        if (profiles) {
+          profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
         }
+
+        // Fetch manager assignments for these staff
+        const { data: assignments } = await supabase
+          .from('staff_assignments')
+          .select('staff_id, manager_id')
+          .in('staff_id', staffIds);
+
+        let managerMap: Record<string, { name: string; email: string }> = {};
+        if (assignments && assignments.length > 0) {
+          const managerIds = [...new Set(assignments.map(a => a.manager_id))];
+          const { data: managers } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', managerIds);
+          if (managers) {
+            managerMap = Object.fromEntries(managers.map(m => [m.id, { name: m.name, email: m.email }]));
+          }
+
+          // Build staff->manager lookup
+          const staffManagerMap: Record<string, string> = {};
+          assignments.forEach(a => { staffManagerMap[a.staff_id] = a.manager_id; });
+
+          for (const f of flatsData) {
+            const profile = f.booking_created_by ? profileMap[f.booking_created_by] : null;
+            const managerId = f.booking_created_by ? staffManagerMap[f.booking_created_by] : null;
+            const manager = managerId ? managerMap[managerId] : null;
+            enriched.push({
+              ...f,
+              creator: profile ? {
+                ...profile,
+                manager_name: manager?.name,
+                manager_email: manager?.email,
+              } : undefined,
+            });
+          }
+        } else {
+          for (const f of flatsData) {
+            const profile = f.booking_created_by ? profileMap[f.booking_created_by] : null;
+            enriched.push({
+              ...f,
+              creator: profile ? { ...profile } : undefined,
+            });
+          }
+        }
+      } else {
+        enriched.push(...flatsData);
       }
-      
-      const enriched = flatsData.map(f => ({
-        ...f,
-        booking_staff: f.booking_created_by && staffMap[f.booking_created_by]
-          ? { id: f.booking_created_by, name: staffMap[f.booking_created_by] }
-          : null,
-      }));
-      
-      setBookings(enriched as BookingFlat[]);
+
+      setBookings(enriched);
       setLoading(false);
     };
     fetchBookings();
   }, [customerRecord]);
 
-  const handleViewDetails = async (booking: BookingFlat) => {
+  const handleViewDetails = async (booking: BookingFlat & { creator?: CreatorInfo }) => {
     setSelectedBooking(booking);
     if (customerRecord) {
       const { data } = await supabase
@@ -117,13 +181,78 @@ export default function CustomerBookings() {
     }
   };
 
+  const handleDownloadQuote = async (booking: BookingFlat) => {
+    if (!booking.booking_rate_per_sqft || !booking.building || !customerRecord) return;
+    setDownloadingQuote(booking.id);
+    try {
+      const { data: buildingData } = await supabase
+        .from('buildings')
+        .select('*')
+        .eq('id', booking.building.id)
+        .single();
+      if (!buildingData) { toast.error('Failed to fetch building details'); return; }
+
+      let payment_modes: { text: string; value: number }[] = [];
+      try {
+        if ((buildingData as any).payment_modes) {
+          payment_modes = typeof (buildingData as any).payment_modes === 'string'
+            ? JSON.parse((buildingData as any).payment_modes)
+            : (buildingData as any).payment_modes;
+        }
+      } catch { payment_modes = []; }
+
+      const building: BuildingDetails = { ...buildingData, payment_modes };
+
+      // Extract customer title from name
+      const titlePrefixes = ['Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+      let cTitle = ''; let cName = customerRecord.name;
+      for (const prefix of titlePrefixes) {
+        if (customerRecord.name.startsWith(prefix + ' ')) {
+          cTitle = prefix; cName = customerRecord.name.substring(prefix.length + 1); break;
+        }
+      }
+
+      const totalArea = booking.square_foot + (booking.terrace_area || 0);
+      const agreementAmount = totalArea * booking.booking_rate_per_sqft;
+      const loanAmount = agreementAmount * 0.95;
+      const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
+      const gstTax = agreementAmount * (building.gst_tax / 100);
+      let stampDutyPercent = building.stamp_duty;
+      if (customerRecord.gender === 'Female') stampDutyPercent = Math.max(0, stampDutyPercent - 1);
+      const stampDuty = agreementAmount * (stampDutyPercent / 100);
+      const statutories = {
+        maintenance: building.maintenance, electrical: building.electrical_water_charges,
+        registration: registrationCharges, gst: gstTax, stampDuty,
+        legal: building.legal_charges, other: building.other_charges
+      };
+      const totalStatutories = Object.values(statutories).reduce((a, b) => a + b, 0);
+      const grandTotal = agreementAmount + totalStatutories;
+
+      const quoteData: QuoteData = {
+        customerTitle: cTitle, customerName: cName, flatNo: booking.flat_no, wing: booking.wing,
+        superBuiltUp: booking.square_foot, terraceArea: booking.terrace_area || 0, totalArea,
+        loanAmount, agreementAmount, paymentModes: building.payment_modes || [],
+        statutoriesPercent: {
+          maintenance: building.maintenance, electrical: building.electrical_water_charges,
+          registration: building.registration_charges, gst: building.gst_tax,
+          stampDuty: stampDutyPercent, legal: building.legal_charges, other: building.other_charges
+        },
+        statutories, totalStatutories, grandTotal, buildingName: building.name,
+      };
+
+      downloadQuote(quoteData, `Quote_${building.name}_${booking.wing ? booking.wing + '-' : ''}${booking.flat_no}.pdf`);
+      toast.success('Quote downloaded!');
+    } catch {
+      toast.error('Failed to generate quote');
+    } finally {
+      setDownloadingQuote(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      new: 'bg-blue-500',
-      open: 'bg-yellow-500',
-      in_progress: 'bg-orange-500',
-      resolved: 'bg-green-500',
-      closed: 'bg-gray-500',
+      new: 'bg-blue-500', open: 'bg-yellow-500', in_progress: 'bg-orange-500',
+      resolved: 'bg-green-500', closed: 'bg-gray-500',
     };
     return <Badge className={`${styles[status] || 'bg-gray-500'} text-white`}>{status.replace('_', ' ')}</Badge>;
   };
@@ -175,9 +304,16 @@ export default function CustomerBookings() {
                       <Badge variant="default">{booking.booked_status}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(booking)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewDetails(booking)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {booking.booking_rate_per_sqft && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadQuote(booking)} disabled={downloadingQuote === booking.id}>
+                            {downloadingQuote === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 text-primary" />}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -230,6 +366,14 @@ export default function CustomerBookings() {
                   <p className="text-muted-foreground">Rate per Sqft</p>
                   <p className="font-medium">₹{selectedBooking.booking_rate_per_sqft?.toLocaleString() || '-'}</p>
                 </div>
+                {selectedBooking.booking_rate_per_sqft && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Total Value</p>
+                    <p className="font-medium text-lg">
+                      ₹{((selectedBooking.square_foot + (selectedBooking.terrace_area || 0)) * selectedBooking.booking_rate_per_sqft).toLocaleString()}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-muted-foreground">Booking Status</p>
                   <Badge variant="default">{selectedBooking.booked_status}</Badge>
@@ -238,17 +382,44 @@ export default function CustomerBookings() {
                   <p className="text-muted-foreground">Flat Experience</p>
                   <p className="font-medium">{selectedBooking.flat_experience || '-'}</p>
                 </div>
-                {selectedBooking.booking_staff && (
-                  <div>
-                    <p className="text-muted-foreground">Assigned Staff</p>
-                    <p className="font-medium">{selectedBooking.booking_staff.name}</p>
-                  </div>
-                )}
                 <div>
                   <p className="text-muted-foreground">Booked On</p>
                   <p className="font-medium">{format(new Date(selectedBooking.created_at), 'dd/MM/yyyy')}</p>
                 </div>
               </div>
+
+              {/* Booking Creator Info */}
+              {selectedBooking.creator && (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-3">Booking Created By</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Name</p>
+                      <p className="font-medium">{selectedBooking.creator.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Role</p>
+                      <p className="font-medium capitalize">{selectedBooking.creator.role}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Email</p>
+                      <p className="font-medium">{selectedBooking.creator.email}</p>
+                    </div>
+                    {selectedBooking.creator.manager_name && (
+                      <>
+                        <div>
+                          <p className="text-muted-foreground">Manager</p>
+                          <p className="font-medium">{selectedBooking.creator.manager_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Manager Email</p>
+                          <p className="font-medium">{selectedBooking.creator.manager_email}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Related Grievances */}
               {relatedTickets.length > 0 && (
@@ -265,6 +436,25 @@ export default function CustomerBookings() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Download Quote Button */}
+              {selectedBooking.booking_rate_per_sqft && (
+                <div className="border-t pt-4">
+                  <Button
+                    onClick={() => handleDownloadQuote(selectedBooking)}
+                    disabled={downloadingQuote === selectedBooking.id}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {downloadingQuote === selectedBooking.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Download Booking Quote
+                  </Button>
                 </div>
               )}
             </div>

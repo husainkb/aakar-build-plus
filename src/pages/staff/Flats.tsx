@@ -446,10 +446,27 @@ export default function StaffFlats() {
             </DialogHeader>
             {editingFlat && (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="p-3 bg-muted rounded-md text-sm space-y-1">
-                  <p><strong>Building:</strong> {editingFlat.buildings?.name}</p>
-                  <p><strong>Flat:</strong> {editingFlat.wing ? `${editingFlat.wing}-` : ''}{editingFlat.flat_no}</p>
-                  <p><strong>Floor:</strong> {editingFlat.floor} | <strong>Sqft:</strong> {editingFlat.square_foot}</p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Building</Label>
+                      <Input value={editingFlat.buildings?.name || ''} disabled className="bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Flat No</Label>
+                      <Input value={`${editingFlat.wing ? editingFlat.wing + '-' : ''}${editingFlat.flat_no}`} disabled className="bg-muted" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Floor</Label>
+                      <Input value={editingFlat.floor.toString()} disabled className="bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Sqft</Label>
+                      <Input value={editingFlat.square_foot.toString()} disabled className="bg-muted" />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
