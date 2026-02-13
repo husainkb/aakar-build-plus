@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, MessageSquareWarning } from 'lucide-react';
+import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, MessageSquareWarning, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -36,6 +36,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/buildings', label: 'Buildings', icon: Building },
     { href: '/admin/flats', label: 'Flats', icon: Home },
+    { href: '/admin/bookings', label: 'Bookings', icon: BookOpen },
     { href: '/admin/generate-quote', label: 'Generate Quote', icon: FileText },
     { href: '/admin/saved-quotes', label: 'Saved Quotes', icon: FolderOpen },
     { href: '/admin/grievances', label: 'Grievances', icon: MessageSquareWarning },
