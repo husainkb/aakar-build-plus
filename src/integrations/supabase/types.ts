@@ -184,6 +184,7 @@ export type Database = {
       }
       flats: {
         Row: {
+          actual_possession_date: string | null
           booked_customer_id: string | null
           booked_status: string
           booking_created_by: string | null
@@ -191,10 +192,15 @@ export type Database = {
           building_id: string
           created_at: string
           created_by: string | null
+          expected_possession_date: string | null
+          final_payment_status: string
           flat_experience: string | null
           flat_no: number
           floor: number
           id: string
+          possession_enabled: boolean
+          possession_notes: string | null
+          possession_status: string
           square_foot: number
           terrace_area: number | null
           type: string
@@ -202,6 +208,7 @@ export type Database = {
           wing: string | null
         }
         Insert: {
+          actual_possession_date?: string | null
           booked_customer_id?: string | null
           booked_status: string
           booking_created_by?: string | null
@@ -209,10 +216,15 @@ export type Database = {
           building_id: string
           created_at?: string
           created_by?: string | null
+          expected_possession_date?: string | null
+          final_payment_status?: string
           flat_experience?: string | null
           flat_no: number
           floor: number
           id?: string
+          possession_enabled?: boolean
+          possession_notes?: string | null
+          possession_status?: string
           square_foot: number
           terrace_area?: number | null
           type: string
@@ -220,6 +232,7 @@ export type Database = {
           wing?: string | null
         }
         Update: {
+          actual_possession_date?: string | null
           booked_customer_id?: string | null
           booked_status?: string
           booking_created_by?: string | null
@@ -227,10 +240,15 @@ export type Database = {
           building_id?: string
           created_at?: string
           created_by?: string | null
+          expected_possession_date?: string | null
+          final_payment_status?: string
           flat_experience?: string | null
           flat_no?: number
           floor?: number
           id?: string
+          possession_enabled?: boolean
+          possession_notes?: string | null
+          possession_status?: string
           square_foot?: number
           terrace_area?: number | null
           type?: string

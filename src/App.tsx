@@ -12,6 +12,7 @@ import CustomerLogin from "./pages/auth/CustomerLogin";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminBookings from "./pages/admin/Bookings";
 import Buildings from "./pages/admin/Buildings";
 import Flats from "./pages/admin/Flats";
 import AdminReports from "./pages/admin/Reports";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/buildings" element={<ProtectedRoute requiredRole="admin"><Buildings /></ProtectedRoute>} />
               <Route path="/admin/flats" element={<ProtectedRoute requiredRole="admin"><Flats /></ProtectedRoute>} />
+              <Route path="/admin/bookings" element={<ProtectedRoute requiredRole="admin"><AdminBookings /></ProtectedRoute>} />
               <Route path="/admin/generate-quote" element={<ProtectedRoute requiredRole="admin"><AdminGenerateQuote /></ProtectedRoute>} />
               <Route path="/admin/saved-quotes" element={<ProtectedRoute requiredRole="admin"><AdminSavedQuotes /></ProtectedRoute>} />
               <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
