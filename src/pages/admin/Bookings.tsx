@@ -318,6 +318,15 @@ export default function Bookings() {
         newErrors.bookingRatePerSqft = `Rate cannot be less than minimum ₹${building.minimum_rate_per_sqft}`;
       }
     }
+    // Possession fields required when possession is enabled
+    if (possessionEnabled) {
+      if (!possessionStatus || possessionStatus === 'not_started') {
+        newErrors.possessionStatus = 'Possession status is required';
+      }
+      if (!expectedPossessionDate) {
+        newErrors.expectedPossessionDate = 'Expected possession date is required';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -741,6 +750,7 @@ export default function Bookings() {
                           <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                       </Select>
+                        {errors.possessionStatus && <p className="text-xs text-destructive">{errors.possessionStatus}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -764,6 +774,7 @@ export default function Bookings() {
                         value={expectedPossessionDate}
                         onChange={(e) => setExpectedPossessionDate(e.target.value)}
                       />
+                      {errors.expectedPossessionDate && <p className="text-xs text-destructive">{errors.expectedPossessionDate}</p>}
                     </div>
 
                     <div className="space-y-2">

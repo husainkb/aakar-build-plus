@@ -121,7 +121,7 @@ export default function CustomerGrievances() {
         .select(`
           *,
           building:buildings(id, name),
-          flat:flats(id, flat_no, wing, floor, type),
+          flat:flats(id, flat_no, wing, floor, type, possession_enabled),
           assigned_staff:profiles_public(id, name)
         `)
         .eq('customer_id', customerRecord.id)
@@ -166,6 +166,15 @@ export default function CustomerGrievances() {
     if (selectedWing && flat.wing !== selectedWing) return false;
     return true;
   });
+
+  // Possession checks: determine whether the currently selected building/wing/flat
+  // has any flats in possession and whether the specifically selected flat is in possession.
+  const selectionFlats = customerFlats.filter(f => f.building_id === formData.building_id && (!selectedWing || f.wing === selectedWing));
+  // A flat is considered 'in possession' when `possession_enabled` is true for that flat.
+  const anyInPossession = selectionFlats.some(f => Boolean(f.possession_enabled));
+  const selectedFlatObj = customerFlats.find(f => f.id === formData.flat_id);
+  const selectedFlatInPossession = Boolean(selectedFlatObj && selectedFlatObj.possession_enabled);
+  const showPossessionWarning = (formData.building_id && !anyInPossession) || (formData.flat_id && !selectedFlatInPossession);
 
   const handleCreateTicket = async () => {
     if (!customerRecord) return;
@@ -223,7 +232,7 @@ export default function CustomerGrievances() {
       .select(`
         *,
         building:buildings(id, name),
-        flat:flats(id, flat_no, wing, floor, type),
+        flat:flats(id, flat_no, wing, floor, type, possession_enabled),
         assigned_staff:profiles_public(id, name)
       `)
       .eq('customer_id', customerRecord.id)
@@ -338,6 +347,10 @@ export default function CustomerGrievances() {
                         ))}
                       </SelectContent>
                     </Select>
+
+                    {showPossessionWarning && (
+                      <p className="text-sm text-destructive">Selected flat must be in possession to raise a grievance.</p>
+                    )}
                   </div>
                 )}
 
@@ -372,7 +385,7 @@ export default function CustomerGrievances() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateTicket} disabled={submitting}>
+                <Button onClick={handleCreateTicket} disabled={submitting || showPossessionWarning}>
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create Ticket
                 </Button>
