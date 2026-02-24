@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, MessageSquareWarning, BookOpen, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,10 +23,36 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { userRole, signOut } = useAuth();
+  const { userRole, signOut, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [canViewGrievances, setCanViewGrievances] = useState(false);
+
+  useEffect(() => {
+    const checkPossession = async () => {
+      if (userRole === 'customer' && user?.id) {
+        // 1. Get customer ID
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (customer) {
+          // 2. Check for possession enabled flats
+          const { count } = await supabase
+            .from('flats')
+            .select('*', { count: 'exact', head: true })
+            .eq('booked_customer_id', customer.id)
+            .eq('possession_enabled', true);
+
+          setCanViewGrievances(!!count && count > 0);
+        }
+      }
+    };
+    checkPossession();
+  }, [userRole, user?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -63,12 +90,18 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/staff/change-password', label: 'Change Password', icon: Lock },
   ];
 
-  const customerLinks = [
+  const allCustomerLinks = [
     { href: '/customer/bookings', label: 'My Bookings', icon: Home },
     { href: '/customer/grievances', label: 'My Grievances', icon: MessageSquareWarning },
     { href: '/customer/feedback', label: 'Feedback', icon: MessageSquare },
     { href: '/customer/change-password', label: 'Change Password', icon: Lock },
   ];
+  useEffect(() => {
+    console.log("canViewGrievances", canViewGrievances);
+  }, [canViewGrievances]);
+  const customerLinks = allCustomerLinks.filter(link =>
+    link.label !== 'My Grievances' || canViewGrievances
+  );
 
   const links = userRole === 'admin' ? adminLinks :
     userRole === 'manager' ? managerLinks :
