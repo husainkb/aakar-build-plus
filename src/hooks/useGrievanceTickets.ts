@@ -21,6 +21,7 @@ export interface GrievanceTicket {
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+  photo_urls: string[] | null;
   customer?: {
     id: string;
     name: string;
@@ -262,7 +263,7 @@ export function useGrievanceTickets() {
   // Check and escalate overdue tickets
   const checkAndEscalateOverdue = useCallback(async () => {
     const now = new Date();
-    
+
     for (const ticket of overdueTickets) {
       if (!ticket.escalated) {
         await logEscalation(
@@ -288,18 +289,55 @@ export function useGrievanceTickets() {
 
   const deleteTicket = useCallback(async (ticketId: string): Promise<boolean> => {
     try {
-      const { error } = await supabase
+      // 1. Fetch ticket to get photo URLs before deletion
+      const { data: ticket, error: fetchError } = await supabase
+        .from('grievance_tickets')
+        .select('photo_urls')
+        .eq('id', ticketId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching ticket for deletion:', fetchError);
+        toast.error('Failed to retrieve ticket details for deletion');
+        return false;
+      }
+
+      // 2. Delete the ticket from the database
+      const { error: deleteError } = await supabase
         .from('grievance_tickets')
         .delete()
         .eq('id', ticketId);
 
-      if (error) {
-        console.error('Error deleting ticket:', error);
+      if (deleteError) {
+        console.error('Error deleting ticket:', deleteError);
         toast.error('Failed to delete ticket');
         return false;
       }
 
-      toast.success('Ticket deleted successfully');
+      // 3. Delete associated photos from storage if ticket deletion was successful
+      if (ticket.photo_urls && ticket.photo_urls.length > 0) {
+        // Extract paths from public URLs
+        const pathsToDelete = ticket.photo_urls.map(url => {
+          // URLs look like: .../storage/v1/object/public/grievance-photos/T-1001/filename.jpg
+          // We need the part after 'grievance-photos/'
+          const parts = url.split('grievance-photos/');
+          return parts.length > 1 ? parts[1] : null;
+        }).filter(Boolean) as string[];
+
+        if (pathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('grievance-photos')
+            .remove(pathsToDelete);
+
+          if (storageError) {
+            console.error('Error deleting photos from storage:', storageError);
+            // We don't necessarily want to fail the whole operation if photos failed to delete,
+            // but we should log it.
+          }
+        }
+      }
+
+      toast.success('Ticket and associated media deleted successfully');
       await fetchTickets();
       return true;
     } catch (error) {

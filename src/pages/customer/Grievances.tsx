@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, Loader2, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, Clock, AlertTriangle, Upload, X } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface Building {
@@ -47,6 +47,7 @@ interface Flat {
   floor: number;
   square_foot: number;
   type: string;
+  possession_enabled?: boolean;
   booked_status: string;
   booked_customer_id: string | null;
   booking_created_by: string | null;
@@ -72,12 +73,16 @@ interface GrievanceTicket {
 }
 
 const GRIEVANCE_TYPES = [
-  'Construction Quality',
-  'Delay in Possession',
-  'Payment Dispute',
-  'Documentation Issue',
-  'Maintenance Issue',
-  'Other',
+  'Plumbing',
+  'Electrical',
+  'Other Work',
+];
+
+const URGENCY_LEVELS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
 ];
 
 export default function CustomerGrievances() {
@@ -89,11 +94,13 @@ export default function CustomerGrievances() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedWing, setSelectedWing] = useState('');
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const [formData, setFormData] = useState({
     building_id: '',
     flat_id: '',
     grievance_type: '',
+    urgency_level: '',
     description: '',
   });
 
@@ -155,10 +162,19 @@ export default function CustomerGrievances() {
   }, []);
 
   // Derived wings for selected building
-  const availableWings = customerFlats
-    .filter(f => f.building_id === formData.building_id && f.wing)
-    .map(f => f.wing!)
-    .filter((wing, index, self) => self.indexOf(wing) === index);
+  const availableWings = useMemo(() => {
+    return customerFlats
+      .filter(f => f.building_id === formData.building_id && f.wing)
+      .map(f => f.wing!)
+      .filter((wing, index, self) => self.indexOf(wing) === index);
+  }, [customerFlats, formData.building_id]);
+
+  // Sync selected wing when available wings change
+  useEffect(() => {
+    if (availableWings.length > 0 && !selectedWing) {
+      setSelectedWing(availableWings[0]);
+    }
+  }, [availableWings, selectedWing]);
 
   // Filtered flats
   const filteredFlats = customerFlats.filter(flat => {
@@ -176,6 +192,19 @@ export default function CustomerGrievances() {
   const selectedFlatInPossession = Boolean(selectedFlatObj && selectedFlatObj.possession_enabled);
   const showPossessionWarning = (formData.building_id && !anyInPossession) || (formData.flat_id && !selectedFlatInPossession);
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setPhotos(prev => {
+      const combined = [...prev, ...files];
+      return combined.slice(0, 5);
+    });
+    e.target.value = '';
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreateTicket = async () => {
     if (!customerRecord) return;
     if (!formData.building_id || !formData.flat_id) {
@@ -184,6 +213,10 @@ export default function CustomerGrievances() {
     }
     if (!formData.grievance_type) {
       toast.error('Please select a grievance type');
+      return;
+    }
+    if (!formData.urgency_level) {
+      toast.error('Please select an urgency level');
       return;
     }
     if (!formData.description.trim()) {
@@ -200,6 +233,33 @@ export default function CustomerGrievances() {
     // Generate ticket number
     const { data: ticketNumber } = await supabase.rpc('generate_ticket_number');
 
+    // Map urgency to priority (DB enum: low | medium | high | urgent)
+    const priorityMap: Record<string, 'low' | 'medium' | 'high' | 'urgent'> = {
+      low: 'low',
+      medium: 'medium',
+      high: 'high',
+      critical: 'urgent',
+    };
+
+    // Upload photos to Supabase Storage
+    const uploadedUrls: string[] = [];
+    for (const file of photos) {
+      const ext = file.name.split('.').pop();
+      const path = `${ticketNumber}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('grievance-photos')
+        .upload(path, file, { upsert: false });
+      if (uploadError) {
+        console.error('Photo upload error:', uploadError);
+        toast.error(`Failed to upload photo "${file.name}": ${uploadError.message}`);
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('grievance-photos')
+          .getPublicUrl(path);
+        uploadedUrls.push(urlData.publicUrl);
+      }
+    }
+
     const { error } = await supabase
       .from('grievance_tickets')
       .insert({
@@ -209,12 +269,14 @@ export default function CustomerGrievances() {
         flat_id: formData.flat_id,
         grievance_type: formData.grievance_type,
         description: formData.description,
-        priority: 'medium',
+        priority: priorityMap[formData.urgency_level] || 'medium',
         status: 'new',
         assigned_staff_id: assignedStaffId,
+        photo_urls: uploadedUrls.length > 0 ? uploadedUrls : [],
       });
 
     setSubmitting(false);
+
 
     if (error) {
       console.error('Error creating ticket:', error);
@@ -241,8 +303,9 @@ export default function CustomerGrievances() {
   };
 
   const resetForm = () => {
-    setFormData({ building_id: '', flat_id: '', grievance_type: '', description: '' });
+    setFormData({ building_id: '', flat_id: '', grievance_type: '', urgency_level: '', description: '' });
     setSelectedWing('');
+    setPhotos([]);
   };
 
   const getStatusBadge = (status: string) => {
@@ -310,7 +373,7 @@ export default function CustomerGrievances() {
                   <div className="space-y-2">
                     <Label>Wing</Label>
                     <Select
-                      value={selectedWing || availableWings[0]}
+                      value={selectedWing}
                       onValueChange={(value) => {
                         setSelectedWing(value);
                         setFormData(prev => ({ ...prev, flat_id: '' }));
@@ -372,6 +435,24 @@ export default function CustomerGrievances() {
                   </Select>
                 </div>
 
+                {/* Urgency Level */}
+                <div className="space-y-2">
+                  <Label>Urgency Level</Label>
+                  <Select
+                    value={formData.urgency_level}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, urgency_level: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select urgency level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {URGENCY_LEVELS.map((level) => (
+                        <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Description */}
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -381,6 +462,46 @@ export default function CustomerGrievances() {
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     rows={4}
                   />
+                </div>
+
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label>Upload Photos (optional, max 5)</Label>
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <div className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-muted transition-colors">
+                      <Upload className="h-4 w-4" />
+                      <span>Choose Photos</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                      disabled={photos.length >= 5}
+                    />
+                  </label>
+                  {photos.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {photos.map((file, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`photo-${idx}`}
+                            className="h-16 w-16 object-cover rounded-md border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full h-4 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                          <p className="text-xs text-muted-foreground mt-0.5 max-w-[64px] truncate">{file.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <DialogFooter>

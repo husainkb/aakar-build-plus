@@ -46,7 +46,7 @@ import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/useGrievanceTickets';
 import { useStaffMembers } from '@/hooks/useStaffMembers';
 import { toast } from 'sonner';
-import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User, Eye, UserPlus } from 'lucide-react';
+import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User, Eye, UserPlus, ImageIcon } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
@@ -173,7 +173,7 @@ export default function GrievancesPage() {
         .select('*, building:buildings(*)')
         .eq('booked_customer_id', selectedCustomer.id)
         .eq('booked_status', 'Booked');
-      
+
       if (data) {
         const flatsWithBuildings = data as unknown as (Flat & { building: Building })[];
         setCustomerFlats(flatsWithBuildings);
@@ -708,9 +708,9 @@ export default function GrievancesPage() {
                     <Label>Priority</Label>
                     <Select
                       value={formData.priority}
-                      onValueChange={(value) => setFormData(prev => ({ 
-                        ...prev, 
-                        priority: value as 'low' | 'medium' | 'high' | 'urgent' 
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        priority: value as 'low' | 'medium' | 'high' | 'urgent'
                       }))}
                     >
                       <SelectTrigger>
@@ -731,9 +731,9 @@ export default function GrievancesPage() {
                   <Label>Assign to Staff (Optional)</Label>
                   <Select
                     value={formData.assigned_staff_id}
-                    onValueChange={(value) => setFormData(prev => ({ 
-                      ...prev, 
-                      assigned_staff_id: value === 'none' ? '' : value 
+                    onValueChange={(value) => setFormData(prev => ({
+                      ...prev,
+                      assigned_staff_id: value === 'none' ? '' : value
                     }))}
                     disabled={staffLoading}
                   >
@@ -838,7 +838,7 @@ export default function GrievancesPage() {
                       </TableHeader>
                       <TableBody>
                         {filterTicketsByStatus(status).map((ticket) => (
-                          <TableRow 
+                          <TableRow
                             key={ticket.id}
                             className={isOverdue(ticket) ? 'bg-destructive/5' : ''}
                           >
@@ -1149,6 +1149,26 @@ export default function GrievancesPage() {
                   <p className="text-sm text-muted-foreground mb-1">Description</p>
                   <p className="text-sm whitespace-pre-wrap">{selectedTicket.description}</p>
                 </div>
+
+                {selectedTicket.photo_urls && selectedTicket.photo_urls.length > 0 && (
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                      <ImageIcon className="h-4 w-4" />
+                      Attached Photos ({selectedTicket.photo_urls.length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTicket.photo_urls.map((url, idx) => (
+                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={url}
+                            alt={`Photo ${idx + 1}`}
+                            className="h-20 w-20 object-cover rounded-md border hover:opacity-80 transition-opacity"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selectedTicket.resolution_note && (
                   <div className="border-t pt-4">

@@ -20,6 +20,7 @@ import AdminSavedQuotes from "./pages/admin/SavedQuotes";
 import AdminGenerateQuote from "./pages/admin/GenerateQuote";
 import StaffManagement from "./pages/admin/StaffManagement";
 import AdminGrievances from "./pages/admin/Grievances";
+import AdminFeedback from "./pages/admin/Feedback";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerSavedQuotes from "./pages/manager/SavedQuotes";
 import ManagerGrievances from "./pages/manager/Grievances";
@@ -31,6 +32,7 @@ import StaffReports from "./pages/staff/Reports";
 import StaffGrievances from "./pages/staff/Grievances";
 import CustomerGrievances from "./pages/customer/Grievances";
 import CustomerBookings from "./pages/customer/Bookings";
+import CustomerFeedback from "./pages/customer/Feedback";
 import ChangePassword from "./pages/shared/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/auth/Signup";
@@ -64,6 +66,7 @@ const App = () => (
               <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><AdminReports /></ProtectedRoute>} />
               <Route path="/admin/staff-management" element={<ProtectedRoute requiredRole="admin"><StaffManagement /></ProtectedRoute>} />
               <Route path="/admin/grievances" element={<ProtectedRoute requiredRole="admin"><AdminGrievances /></ProtectedRoute>} />
+              <Route path="/admin/feedback" element={<ProtectedRoute requiredRole="admin"><AdminFeedback /></ProtectedRoute>} />
               <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
               {/* Manager Routes */}
               <Route path="/manager/dashboard" element={<ProtectedRoute requiredRole="manager"><ManagerDashboard /></ProtectedRoute>} />
@@ -81,6 +84,7 @@ const App = () => (
               {/* Customer Routes */}
               <Route path="/customer/grievances" element={<ProtectedRoute requiredRole="customer"><CustomerGrievances /></ProtectedRoute>} />
               <Route path="/customer/bookings" element={<ProtectedRoute requiredRole="customer"><CustomerBookings /></ProtectedRoute>} />
+              <Route path="/customer/feedback" element={<ProtectedRoute requiredRole="customer"><CustomerFeedback /></ProtectedRoute>} />
               <Route path="/customer/change-password" element={<ProtectedRoute requiredRole="customer"><ChangePassword /></ProtectedRoute>} />
             </Route>
 
