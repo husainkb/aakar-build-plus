@@ -49,6 +49,7 @@ interface QuoteData {
   totalArea: number;
   agreementAmount: number;
   loanAmount: number;
+  ownAmount: number;
   paymentModes: PaymentMode[];
   statutories: {
     maintenance: number;
@@ -101,6 +102,8 @@ export default function GenerateQuote() {
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
   const [customerErrors, setCustomerErrors] = useState<{ [key: string]: string }>({});
+  const [loanAmountInput, setLoanAmountInput] = useState<string>('');
+  const [ownAmountInput, setOwnAmountInput] = useState<string>('');
 
   useEffect(() => {
     fetchBuildings();
@@ -143,7 +146,7 @@ export default function GenerateQuote() {
       .eq('building_id', buildingId)
       .neq('booked_status', 'Booked')
       .order('flat_no');
-    
+
     setFlats(data || []);
     const wings = data?.map(f => f.wing).filter(w => w) || [];
     const uniqueWings = [...new Set(wings)].sort();
@@ -227,7 +230,15 @@ export default function GenerateQuote() {
     // Use edited rate or original building rate
     const basicRate = ratePerSqft || Number(building.rate_per_sqft);
     const agreementAmount = totalArea * basicRate;
-    const loanAmount = agreementAmount * 0.95;
+
+    // Manual Loan and Own amount
+    const manualLoanAmount = parseFloat(loanAmountInput);
+    const manualOwnAmount = parseFloat(ownAmountInput) || 0;
+
+    if (isNaN(manualLoanAmount)) {
+      toast.error('Please enter a valid Loan Amount');
+      return;
+    }
 
     // Statuatories calculations with gender-based stamp duty discount
     const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
@@ -272,7 +283,8 @@ export default function GenerateQuote() {
       terraceArea: flat.terrace_area || 0,
       totalArea,
       agreementAmount,
-      loanAmount,
+      loanAmount: manualLoanAmount,
+      ownAmount: manualOwnAmount,
       paymentModes: building.payment_modes || [],
       statutories,
       statutoriesPercent,
@@ -317,6 +329,8 @@ export default function GenerateQuote() {
         stamp_duty: statutories.stampDuty,
         legal_charges: statutories.legal,
         other_charges: statutories.other,
+        loan_amount: manualLoanAmount,
+        own_amt: manualOwnAmount,
         total_amount: grandTotal,
         payment_schedule: (building.payment_modes || []) as any,
         created_by: user.id
@@ -395,13 +409,13 @@ export default function GenerateQuote() {
       head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
       body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
-      styles: { 
-        fontSize: 10, 
+      styles: {
+        fontSize: 10,
         cellPadding: 3,
         textColor: 0,
       },
-      headStyles: { 
-        fillColor: [41, 128, 185], 
+      headStyles: {
+        fillColor: [41, 128, 185],
         textColor: 255,
         fontStyle: 'bold',
       },
@@ -418,15 +432,15 @@ export default function GenerateQuote() {
       head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
-      styles: { 
-        fontSize: 10, 
+      styles: {
+        fontSize: 10,
         cellPadding: 3,
         textColor: 0,
       },
-      headStyles: { 
-        fillColor: [41, 128, 185], 
+      headStyles: {
+        fillColor: [41, 128, 185],
         textColor: 255,
-        fontStyle: 'bold' 
+        fontStyle: 'bold'
       },
       bodyStyles: {
         textColor: 0,
@@ -446,21 +460,21 @@ export default function GenerateQuote() {
           paymentMode.text,
           `${paymentMode.value}%`,
           '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+          paymentMode.value === 0 ? formatINR(quoteData.ownAmount) : formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
-        ['', 'OWN AMT', '', '', ''],
+        ['', 'OWN AMT', '', '', formatINR(quoteData.ownAmount)],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
-      styles: { 
-        fontSize: 8, 
+      styles: {
+        fontSize: 8,
         cellPadding: 2,
         textColor: 0,
       },
-      headStyles: { 
-        fillColor: [41, 128, 185], 
+      headStyles: {
+        fillColor: [41, 128, 185],
         textColor: 255,
-        fontStyle: 'bold' 
+        fontStyle: 'bold'
       },
       bodyStyles: {
         textColor: 0,
@@ -498,15 +512,15 @@ export default function GenerateQuote() {
         ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
-      styles: { 
-        fontSize: 8, 
+      styles: {
+        fontSize: 8,
         cellPadding: 2,
         textColor: 0
       },
-      headStyles: { 
-        fillColor: [41, 128, 185], 
-        textColor: 255, 
-        fontStyle: 'bold' 
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold'
       },
       bodyStyles: {
         textColor: 0
@@ -633,9 +647,9 @@ export default function GenerateQuote() {
           paymentMode.text,
           `${paymentMode.value}%`,
           '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+          paymentMode.value === 0 ? formatINR(quoteData.ownAmount) : formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
-        ['', 'OWN AMT', '', '', ''],
+        ['', 'OWN AMT', '', '', formatINR(quoteData.ownAmount)],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
@@ -913,9 +927,9 @@ export default function GenerateQuote() {
     // Create a temporary download link and open email client
     const subject = encodeURIComponent(`Property Quote - ${quoteData.building} Flat ${quoteData.flatNo}`);
     const body = encodeURIComponent(`Dear ${quoteData.customerTitle} ${quoteData.customerName},\n\nPlease find attached the quote for:\n\nBuilding: ${quoteData.building}\nFlat No: ${quoteData.flatNo}\nGrand Total: ${formatINR(quoteData.grandTotal)}\n\nNote: Please download the PDF attachment from the quote page.\n\nBest regards`);
-    
+
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-    
+
     // Also trigger PDF download for attachment
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
@@ -925,7 +939,7 @@ export default function GenerateQuote() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     toast.success('Email client opened and PDF downloaded for attachment!');
   };
 
@@ -1097,8 +1111,8 @@ export default function GenerateQuote() {
 
               <div className="space-y-2">
                 <Label htmlFor="flat">Flat</Label>
-                <Select 
-                  value={selectedFlat} 
+                <Select
+                  value={selectedFlat}
                   onValueChange={setSelectedFlat}
                   disabled={hasWings && !selectedWing}
                 >
@@ -1115,13 +1129,44 @@ export default function GenerateQuote() {
                 </Select>
               </div>
 
-              <Button 
-                onClick={handleGenerateQuote} 
+              <Button
+                onClick={handleGenerateQuote}
                 className="w-full"
                 disabled={!selectedBuilding || !selectedFlat || (hasWings && !selectedWing) || !!rateError}
               >
                 Generate Quote
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Other Details Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Other Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loanAmount">Loan Amount <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="loanAmount"
+                    placeholder="Enter loan amount"
+                    type="number"
+                    value={loanAmountInput}
+                    onChange={(e) => setLoanAmountInput(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ownAmount">Own Amount (OWN AMT)</Label>
+                  <Input
+                    id="ownAmount"
+                    placeholder="0"
+                    type="number"
+                    value={ownAmountInput}
+                    onChange={(e) => setOwnAmountInput(e.target.value)}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1206,7 +1251,7 @@ export default function GenerateQuote() {
                         <dd>₹{quoteData.agreementAmount.toLocaleString()}</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt>Loan Amount (95%):</dt>
+                        <dt>Loan Amount:</dt>
                         <dd>₹{quoteData.loanAmount.toLocaleString()}</dd>
                       </div>
                     </dl>

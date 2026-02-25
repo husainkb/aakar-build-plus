@@ -30,6 +30,8 @@ interface SavedQuote {
   stamp_duty: number;
   legal_charges: number;
   other_charges: number;
+  loan_amount: number;
+  own_amt: number;
   total_amount: number;
   payment_schedule: Array<{ text: string; value: number }>;
   created_at: string;
@@ -43,7 +45,7 @@ export default function SavedQuotes() {
   const fetchQuotes = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch quotes with staff names
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
@@ -61,7 +63,7 @@ export default function SavedQuotes() {
 
       // Map staff names to quotes
       const profilesMap = new Map(profilesData?.map(p => [p.id, p.name]) || []);
-      
+
       const typedQuotes = (quotesData || []).map(quote => ({
         ...quote,
         flat_details: quote.flat_details as {
@@ -136,8 +138,9 @@ export default function SavedQuotes() {
       superBuiltUp: quote.flat_details?.square_foot || 0,
       terraceArea: quote.flat_details?.terrace_area || 0,
       totalArea: (quote.flat_details?.square_foot || 0) + (quote.flat_details?.terrace_area || 0),
-      loanAmount: quote.base_amount || 0,
-      agreementAmount: quote.total_amount || 0,
+      loanAmount: quote.loan_amount || 0,
+      ownAmount: quote.own_amt || 0,
+      agreementAmount: quote.base_amount || 0,
       paymentModes: quote.payment_schedule || [],
       statutoriesPercent: {
         maintenance: quote.maintenance || 0,
@@ -227,9 +230,9 @@ export default function SavedQuotes() {
           paymentMode.text,
           `${paymentMode.value}%`,
           '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+          paymentMode.value === 0 ? formatINR(quoteData.ownAmount) : formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
-        ['', 'OWN AMT', '', '', ''],
+        ['', 'OWN AMT', '', '', formatINR(quoteData.ownAmount)],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',

@@ -31,6 +31,8 @@ interface SavedQuote {
   stamp_duty: number;
   legal_charges: number;
   other_charges: number;
+  loan_amount: number;
+  own_amt: number;
   total_amount: number;
   payment_schedule: Array<{ text: string; value: number }>;
   created_at: string;
@@ -50,7 +52,7 @@ export default function SavedQuotes() {
 
   const fetchQuotes = async () => {
     if (!user) return;
-    
+
     try {
       // RLS policies will automatically filter quotes for staff users
       // Staff users will only see quotes where created_by = auth.uid()
@@ -130,198 +132,199 @@ export default function SavedQuotes() {
 
   const handleDownloadQuote = (quote: SavedQuote) => {
     const doc = new jsPDF();
-        const pageHeight = doc.internal.pageSize.height;
-        const margin = 20;
-        let currentY = 20;
-    
-        // Normalize incoming quote to the shape expected by the     generation code
-        const quoteData = { 
-          customerTitle: quote.customer_title || '',
-          customerName: quote.customer_name || '',
-          flatNo: quote.flat_details?.flat_no || 0,
-          superBuiltUp: quote.flat_details?.square_foot || 0,
-          terraceArea: quote.flat_details?.terrace_area || 0,
-          totalArea: (quote.flat_details?.square_foot || 0) + (quote.flat_details?.terrace_area || 0),
-          loanAmount: quote.base_amount || 0,
-          agreementAmount: quote.total_amount || 0,
-          paymentModes: quote.payment_schedule || [],
-          statutoriesPercent: {
-            maintenance: quote.maintenance || 0,
-            electrical: quote.electrical_water_charges || 0,
-            registration: quote.registration_charges || 0,
-            gst: quote.gst_tax || 0,
-            stampDuty: quote.stamp_duty || 0,
-            legal: quote.legal_charges || 0,
-            other: quote.other_charges || 0
-          },
-          statutories: {
-            maintenance: quote.maintenance || 0,
-            electrical: quote.electrical_water_charges || 0,
-            registration: quote.registration_charges || 0,
-            gst: quote.gst_tax || 0,
-            stampDuty: quote.stamp_duty || 0,
-            legal: quote.legal_charges || 0,
-            other: quote.other_charges || 0
-          },
-          totalStatutories:
-            (quote.maintenance || 0) +
-            (quote.electrical_water_charges || 0) +
-            (quote.registration_charges || 0) +
-            (quote.gst_tax || 0) +
-            (quote.stamp_duty || 0) +
-            (quote.legal_charges || 0) +
-            (quote.other_charges || 0),
-          grandTotal: quote.total_amount || 0
-        };
-    
-        // Function to check if we need a new page
-        const checkPageBreak = (requiredSpace: number) => {
-          if (currentY + requiredSpace > pageHeight - margin) {
-            doc.addPage();
-            currentY = margin;
-            return true;
-          }
-          return false;
-        };
-    
-        // Header
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Quote', 105, currentY, { align: 'center' });
-        currentY += 15;
-    
-        // Customer Details
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
-        currentY += 15;
-    
-        // Area Table in Tabular Format
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
-          body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
-          theme: 'grid',
-          styles: { fontSize: 10, cellPadding: 3 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-          margin: { left: margin, right: margin }
-        });
-        currentY = getLastAutoTableFinalY(doc) + 10;
-    
-        // Loan and Agreement Amount Table in Tabular Format
-        autoTable(doc, {
-          startY: currentY,
-          head: [['', 'Loan Amount', 'Agreement Amount']],
-          body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
-          theme: 'grid',
-          styles: { fontSize: 10, cellPadding: 3 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-          margin: { left: margin, right: margin }
-        });
-        currentY = getLastAutoTableFinalY(doc) + 15;
-    
-        // Dynamic Payment Schedule Table
-        checkPageBreak(100);
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-          body: [
-            ...quoteData.paymentModes.map((paymentMode, index) => [
-              (index + 1).toString(),
-              paymentMode.text,
-              `${paymentMode.value}%`,
-              '',
-              formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
-            ]),
-            ['', 'OWN AMT', '', '', ''],
-            ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
-          ],
-          theme: 'grid',
-          styles: { fontSize: 8, cellPadding: 2 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-          margin: { left: margin, right: margin },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 20 },
-            3: { cellWidth: 10 },
-            4: { cellWidth: 35 }
-          }
-        });
-        currentY = getLastAutoTableFinalY(doc) + 10;
-    
-        // Total Flat Amount
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
-        currentY += 15;
-    
-        // Statuatories Section
-        checkPageBreak(80);
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Statuatories', margin, currentY);
-        currentY += 10;
-    
-        // Statuatories table WITH PERCENTAGE COLUMN
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
-          body: [
-            [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
-            [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
-            [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
-            [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
-            [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
-            [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
-            [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
-            ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
-          ],
-          theme: 'grid',
-          styles: { fontSize: 8, cellPadding: 2 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-          margin: { left: margin, right: margin },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 20 },
-            3: { cellWidth: 10 },
-            4: { cellWidth: 35 }
-          }
-        });
-        currentY = getLastAutoTableFinalY(doc) + 10;
-    
-        // Grand Total
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
-        currentY += 20;
-    
-        // Check if we need a new page for terms and signature
-        checkPageBreak(50);
-    
-        // Terms and Conditions on Page 2
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
-        currentY += 5;
-        doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
-        currentY += 5;
-        doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
-        currentY += 15;
-    
-        // Purchaser Signature
-        doc.text('Purchaser Signature', margin, currentY);
-        doc.line(margin, currentY + 2, margin + 60, currentY + 2);
-    
-        currentY += 10;
-    
-        // Add customer name under signature
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 20;
+    let currentY = 20;
+
+    // Normalize incoming quote to the shape expected by the     generation code
+    const quoteData = {
+      customerTitle: quote.customer_title || '',
+      customerName: quote.customer_name || '',
+      flatNo: quote.flat_details?.flat_no || 0,
+      superBuiltUp: quote.flat_details?.square_foot || 0,
+      terraceArea: quote.flat_details?.terrace_area || 0,
+      totalArea: (quote.flat_details?.square_foot || 0) + (quote.flat_details?.terrace_area || 0),
+      loanAmount: quote.loan_amount || 0,
+      ownAmount: quote.own_amt || 0,
+      agreementAmount: quote.base_amount || 0,
+      paymentModes: quote.payment_schedule || [],
+      statutoriesPercent: {
+        maintenance: quote.maintenance || 0,
+        electrical: quote.electrical_water_charges || 0,
+        registration: quote.registration_charges || 0,
+        gst: quote.gst_tax || 0,
+        stampDuty: quote.stamp_duty || 0,
+        legal: quote.legal_charges || 0,
+        other: quote.other_charges || 0
+      },
+      statutories: {
+        maintenance: quote.maintenance || 0,
+        electrical: quote.electrical_water_charges || 0,
+        registration: quote.registration_charges || 0,
+        gst: quote.gst_tax || 0,
+        stampDuty: quote.stamp_duty || 0,
+        legal: quote.legal_charges || 0,
+        other: quote.other_charges || 0
+      },
+      totalStatutories:
+        (quote.maintenance || 0) +
+        (quote.electrical_water_charges || 0) +
+        (quote.registration_charges || 0) +
+        (quote.gst_tax || 0) +
+        (quote.stamp_duty || 0) +
+        (quote.legal_charges || 0) +
+        (quote.other_charges || 0),
+      grandTotal: quote.total_amount || 0
+    };
+
+    // Function to check if we need a new page
+    const checkPageBreak = (requiredSpace: number) => {
+      if (currentY + requiredSpace > pageHeight - margin) {
+        doc.addPage();
+        currentY = margin;
+        return true;
+      }
+      return false;
+    };
+
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Quote', 105, currentY, { align: 'center' });
+    currentY += 15;
+
+    // Customer Details
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
+    currentY += 15;
+
+    // Area Table in Tabular Format
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
+      body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      margin: { left: margin, right: margin }
+    });
+    currentY = getLastAutoTableFinalY(doc) + 10;
+
+    // Loan and Agreement Amount Table in Tabular Format
+    autoTable(doc, {
+      startY: currentY,
+      head: [['', 'Loan Amount', 'Agreement Amount']],
+      body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      margin: { left: margin, right: margin }
+    });
+    currentY = getLastAutoTableFinalY(doc) + 15;
+
+    // Dynamic Payment Schedule Table
+    checkPageBreak(100);
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
+      body: [
+        ...quoteData.paymentModes.map((paymentMode, index) => [
+          (index + 1).toString(),
+          paymentMode.text,
+          `${paymentMode.value}%`,
+          '',
+          paymentMode.value === 0 ? formatINR(quoteData.ownAmount) : formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+        ]),
+        ['', 'OWN AMT', '', '', formatINR(quoteData.ownAmount)],
+        ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 10 },
+        4: { cellWidth: 35 }
+      }
+    });
+    currentY = getLastAutoTableFinalY(doc) + 10;
+
+    // Total Flat Amount
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
+    currentY += 15;
+
+    // Statuatories Section
+    checkPageBreak(80);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Statuatories', margin, currentY);
+    currentY += 10;
+
+    // Statuatories table WITH PERCENTAGE COLUMN
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Sr. No.', 'Payment Mode', 'Per %', '', 'Amount']],
+      body: [
+        [quoteData.paymentModes.length + 1, 'Maintenance', quoteData.statutoriesPercent.maintenance, '', formatINR(quoteData.statutories.maintenance)],
+        [quoteData.paymentModes.length + 2, 'Electrical & Water Charges', quoteData.statutoriesPercent.electrical, '', formatINR(quoteData.statutories.electrical)],
+        [quoteData.paymentModes.length + 3, 'Registration Charges', quoteData.statutoriesPercent.registration, '', formatINR(quoteData.statutories.registration)],
+        [quoteData.paymentModes.length + 4, 'GST/S Tax', quoteData.statutoriesPercent.gst, '', formatINR(quoteData.statutories.gst)],
+        [quoteData.paymentModes.length + 5, 'Stamp Duty', quoteData.statutoriesPercent.stampDuty, '', formatINR(quoteData.statutories.stampDuty)],
+        [quoteData.paymentModes.length + 6, 'Legal Charges', quoteData.statutoriesPercent.legal, '', formatINR(quoteData.statutories.legal)],
+        [quoteData.paymentModes.length + 7, 'Other Charges', quoteData.statutoriesPercent.other, '', formatINR(quoteData.statutories.other)],
+        ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 10 },
+        4: { cellWidth: 35 }
+      }
+    });
+    currentY = getLastAutoTableFinalY(doc) + 10;
+
+    // Grand Total
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
+    currentY += 20;
+
+    // Check if we need a new page for terms and signature
+    checkPageBreak(50);
+
+    // Terms and Conditions on Page 2
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
+    currentY += 5;
+    doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
+    currentY += 5;
+    doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
+    currentY += 15;
+
+    // Purchaser Signature
+    doc.text('Purchaser Signature', margin, currentY);
+    doc.line(margin, currentY + 2, margin + 60, currentY + 2);
+
+    currentY += 10;
+
+    // Add customer name under signature
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);;
 
     doc.save(`Quote_${quote.building_name}_Flat_${quote.flat_details.flat_no}_${quote.id.substring(0, 8)}.pdf`);
     toast.success('PDF downloaded successfully!');

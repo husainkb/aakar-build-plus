@@ -422,8 +422,10 @@ export type Database = {
           gst_tax: number
           id: string
           legal_charges: number
+          loan_amount: number
           maintenance: number
           other_charges: number
+          own_amt: number
           payment_schedule: Json | null
           rate_per_sqft: number
           registration_charges: number
@@ -447,8 +449,10 @@ export type Database = {
           gst_tax: number
           id?: string
           legal_charges: number
+          loan_amount: number
           maintenance: number
           other_charges: number
+          own_amt?: number
           payment_schedule?: Json | null
           rate_per_sqft: number
           registration_charges: number
@@ -472,8 +476,10 @@ export type Database = {
           gst_tax?: number
           id?: string
           legal_charges?: number
+          loan_amount?: number
           maintenance?: number
           other_charges?: number
+          own_amt?: number
           payment_schedule?: Json | null
           rate_per_sqft?: number
           registration_charges?: number
