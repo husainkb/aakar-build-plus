@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { formatINR } from '@/lib/utils';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Trash2, Loader2 } from 'lucide-react';
+import { Download, Trash2, Loader2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { QuoteViewModal } from '@/components/QuoteViewModal';
 
 interface SavedQuote {
   id: string;
@@ -43,6 +45,8 @@ export default function SavedQuotes() {
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<SavedQuote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedQuote, setSelectedQuote] = useState<SavedQuote | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -116,19 +120,21 @@ export default function SavedQuotes() {
     }
   };
 
-  function formatINR(value: number | string): string {
-    const num = Number(value);
-    if (!num || isNaN(num)) return 'Rs. 0';
-    return 'Rs. ' + num.toLocaleString('en-IN', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    });
-  }
+
 
   function getLastAutoTableFinalY(doc: jsPDF): number {
     // @ts-expect-error: jsPDF lastAutoTable is not typed but available at runtime
     return doc.lastAutoTable?.finalY || 0;
   }
+
+  const isCreatedBeforeCutoff = (dateString: string) => {
+    const createdDate = new Date(dateString);
+
+    // Month is 0-indexed in JavaScript (Feb = 1)
+    const cutoffDate = new Date(2026, 1, 25); // 25 Feb 2026
+
+    return createdDate > cutoffDate;
+  };
 
   const handleDownloadQuote = (quote: SavedQuote) => {
     const doc = new jsPDF();
@@ -385,13 +391,28 @@ export default function SavedQuotes() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              onClick={() => handleDownloadQuote(quote)}
-                              variant="outline"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            {isCreatedBeforeCutoff(quote.created_at) ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleDownloadQuote(quote)}
+                                variant="outline"
+                                title="Download PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedQuote(quote);
+                                  setIsViewModalOpen(true);
+                                }}
+                                variant="outline"
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={() => handleDeleteQuote(quote.id)}
@@ -410,6 +431,12 @@ export default function SavedQuotes() {
           </CardContent>
         </Card>
       </div>
+
+      <QuoteViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        quote={selectedQuote}
+      />
     </>
   );
 }

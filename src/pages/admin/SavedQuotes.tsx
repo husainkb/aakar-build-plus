@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatINR } from '@/lib/utils';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, Loader2, Trash2 } from 'lucide-react';
+import { Download, Loader2, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { QuoteViewModal } from '@/components/QuoteViewModal';
 
 interface SavedQuote {
   id: string;
@@ -41,6 +43,8 @@ interface SavedQuote {
 export default function SavedQuotes() {
   const [quotes, setQuotes] = useState<SavedQuote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedQuote, setSelectedQuote] = useState<SavedQuote | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const fetchQuotes = async () => {
     try {
@@ -110,19 +114,20 @@ export default function SavedQuotes() {
     fetchQuotes();
   }, []);
 
-  function formatINR(value: number | string): string {
-    const num = Number(value);
-    if (!num || isNaN(num)) return 'Rs. 0';
-    return 'Rs. ' + num.toLocaleString('en-IN', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    });
-  }
 
   function getLastAutoTableFinalY(doc: jsPDF): number {
     // @ts-expect-error: jsPDF lastAutoTable is not typed but available at runtime
     return doc.lastAutoTable?.finalY || 0;
   }
+
+  const isCreatedBeforeCutoff = (dateString: string) => {
+    const createdDate = new Date(dateString);
+
+    // Month is 0-indexed in JavaScript (Feb = 1)
+    const cutoffDate = new Date(2026, 1, 25); // 25 Feb 2026
+
+    return createdDate > cutoffDate;
+  };
 
   const handleDownloadQuote = (quote: SavedQuote) => {
     const doc = new jsPDF();
@@ -376,13 +381,28 @@ export default function SavedQuotes() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownloadQuote(quote)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                          {isCreatedBeforeCutoff(quote.created_at) ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadQuote(quote)}
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuote(quote);
+                                setIsViewModalOpen(true);
+                              }}
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -400,6 +420,12 @@ export default function SavedQuotes() {
           </CardContent>
         </Card>
       </div>
+
+      <QuoteViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        quote={selectedQuote}
+      />
     </>
   );
 }
