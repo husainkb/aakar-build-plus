@@ -182,16 +182,15 @@ export default function SavedQuotes() {
     };
 
     // Header
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 15;
 
     // Customer Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
     currentY += 15;
 
@@ -201,7 +200,7 @@ export default function SavedQuotes() {
       head: [['Flat No.', 'Super Built Up Area', 'Terrace Area', 'Total']],
       body: [[quoteData.flatNo.toString(), quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
+      styles: { fontSize: 12, cellPadding: 3, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       margin: { left: margin, right: margin }
     });
@@ -213,7 +212,7 @@ export default function SavedQuotes() {
       head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
+      styles: { fontSize: 12, cellPadding: 3, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       margin: { left: margin, right: margin }
     });
@@ -236,7 +235,7 @@ export default function SavedQuotes() {
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       margin: { left: margin, right: margin },
       columnStyles: {
@@ -251,13 +250,13 @@ export default function SavedQuotes() {
 
     // Total Flat Amount
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
     currentY += 15;
 
     // Statuatories Section
     checkPageBreak(80);
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Statuatories', margin, currentY);
     currentY += 10;
@@ -277,7 +276,7 @@ export default function SavedQuotes() {
         ['', '', 'Total', '', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       margin: { left: margin, right: margin },
       columnStyles: {
@@ -291,7 +290,7 @@ export default function SavedQuotes() {
     currentY = getLastAutoTableFinalY(doc) + 10;
 
     // Grand Total
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
     currentY += 20;
@@ -300,8 +299,8 @@ export default function SavedQuotes() {
     checkPageBreak(50);
 
     // Terms and Conditions on Page 2
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`I understand that flat No.${quoteData.flatNo} has been alloted to me and I agree to provide first`, margin, currentY);
     currentY += 5;
     doc.text('disbursment within 30 days from booking date. Failing to do so I agree that', margin, currentY);
@@ -316,8 +315,8 @@ export default function SavedQuotes() {
     currentY += 10;
 
     // Add customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
 
     doc.save(`Quote_${quote.building_name}_Flat_${quote.flat_details.flat_no}_${quote.id.substring(0, 8)}.pdf`);

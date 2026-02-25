@@ -182,9 +182,10 @@ export default function StaffReports() {
     }
 
     const doc = new jsPDF();
-    doc.setFontSize(16);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
     doc.text('Flats Report', 14, 15);
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
 
     autoTable(doc, {
@@ -200,7 +201,8 @@ export default function StaffReports() {
         f.booked_status
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [34, 47, 62] },
+      styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold' },
+      headStyles: { fillColor: [34, 47, 62], fontStyle: 'bold' },
     });
 
     doc.save(`Flats_Report_${scope}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -414,8 +416,8 @@ export default function StaffReports() {
                       <TableCell className="hidden lg:table-cell">{flat.square_foot}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${flat.booked_status.toLowerCase() === 'booked'
-                            ? 'bg-accent/10 text-accent'
-                            : 'bg-muted text-muted-foreground'
+                          ? 'bg-accent/10 text-accent'
+                          : 'bg-muted text-muted-foreground'
                           }`}>
                           {flat.booked_status}
                         </span>
@@ -470,8 +472,8 @@ export default function StaffReports() {
                   <Label className="text-muted-foreground">Booking Status</Label>
                   <p className="font-medium">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${selectedFlat.booked_status.toLowerCase() === 'booked'
-                        ? 'bg-accent/10 text-accent'
-                        : 'bg-muted text-muted-foreground'
+                      ? 'bg-accent/10 text-accent'
+                      : 'bg-muted text-muted-foreground'
                       }`}>
                       {selectedFlat.booked_status}
                     </span>

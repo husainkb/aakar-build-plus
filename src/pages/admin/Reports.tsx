@@ -78,14 +78,14 @@ export default function AdminReports() {
       `);
 
     if (buildingsData) setBuildings(buildingsData);
-    
+
     if (flatsData) {
       const formattedFlats = flatsData.map((flat: any) => ({
         ...flat,
         building_name: flat.buildings?.name || 'Unknown'
       }));
       setFlats(formattedFlats);
-      
+
       // Extract unique wings (filter out nulls)
       const uniqueWings = [...new Set(formattedFlats.map((f: Flat) => f.wing).filter(w => w))];
       setWings(uniqueWings.sort());
@@ -97,12 +97,12 @@ export default function AdminReports() {
 
     // Search filters
     if (searchBuilding) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.building_name.toLowerCase().includes(searchBuilding.toLowerCase())
       );
     }
     if (searchFlat) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.flat_no.toString().includes(searchFlat)
       );
     }
@@ -133,7 +133,7 @@ export default function AdminReports() {
 
   const exportToExcel = (scope: 'all' | 'building' | 'wing') => {
     let dataToExport = [...filteredFlats];
-    
+
     if (scope === 'building' && filterBuilding !== 'all') {
       dataToExport = dataToExport.filter(f => f.building_id === filterBuilding);
     } else if (scope === 'wing' && filterWing !== 'all') {
@@ -169,7 +169,7 @@ export default function AdminReports() {
 
   const exportToPDF = (scope: 'all' | 'building' | 'wing') => {
     let dataToExport = [...filteredFlats];
-    
+
     if (scope === 'building' && filterBuilding !== 'all') {
       dataToExport = dataToExport.filter(f => f.building_id === filterBuilding);
     } else if (scope === 'wing' && filterWing !== 'all') {
@@ -182,9 +182,10 @@ export default function AdminReports() {
     }
 
     const doc = new jsPDF();
-    doc.setFontSize(16);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
     doc.text('Flats Report', 14, 15);
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
 
     autoTable(doc, {
@@ -200,7 +201,8 @@ export default function AdminReports() {
         f.booked_status
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [34, 47, 62] },
+      styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold' },
+      headStyles: { fillColor: [34, 47, 62], fontStyle: 'bold' },
     });
 
     doc.save(`Flats_Report_${scope}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -400,8 +402,8 @@ export default function AdminReports() {
                 </TableHeader>
                 <TableBody>
                   {filteredFlats.map(flat => (
-                    <TableRow 
-                      key={flat.id} 
+                    <TableRow
+                      key={flat.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => openFlatDetail(flat)}
                     >
@@ -412,11 +414,10 @@ export default function AdminReports() {
                       <TableCell className="hidden md:table-cell">{flat.type}</TableCell>
                       <TableCell className="hidden lg:table-cell">{flat.square_foot}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          flat.booked_status.toLowerCase() === 'booked' 
-                            ? 'bg-accent/10 text-accent' 
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${flat.booked_status.toLowerCase() === 'booked'
+                            ? 'bg-accent/10 text-accent'
                             : 'bg-muted text-muted-foreground'
-                        }`}>
+                          }`}>
                           {flat.booked_status}
                         </span>
                       </TableCell>
@@ -469,11 +470,10 @@ export default function AdminReports() {
                 <div>
                   <Label className="text-muted-foreground">Booking Status</Label>
                   <p className="font-medium">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      selectedFlat.booked_status.toLowerCase() === 'booked' 
-                        ? 'bg-accent/10 text-accent' 
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${selectedFlat.booked_status.toLowerCase() === 'booked'
+                        ? 'bg-accent/10 text-accent'
                         : 'bg-muted text-muted-foreground'
-                    }`}>
+                      }`}>
                       {selectedFlat.booked_status}
                     </span>
                   </p>

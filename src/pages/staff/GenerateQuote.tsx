@@ -387,19 +387,17 @@ export default function GenerateQuote() {
     };
 
     // Header - will be black
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 15;
 
     // Customer Details - will be black
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
     currentY += 7;
-    doc.setFont('helvetica', 'normal');
     doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
     currentY += 12;
 
@@ -410,9 +408,10 @@ export default function GenerateQuote() {
       body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
       styles: {
-        fontSize: 10,
+        fontSize: 12,
         cellPadding: 3,
         textColor: 0,
+        fontStyle: 'bold',
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -433,9 +432,10 @@ export default function GenerateQuote() {
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
       styles: {
-        fontSize: 10,
+        fontSize: 12,
         cellPadding: 3,
         textColor: 0,
+        fontStyle: 'bold',
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -467,9 +467,10 @@ export default function GenerateQuote() {
       ],
       theme: 'grid',
       styles: {
-        fontSize: 8,
+        fontSize: 10,
         cellPadding: 2,
         textColor: 0,
+        fontStyle: 'bold',
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -492,7 +493,7 @@ export default function GenerateQuote() {
 
     // Total Flat Amount - will be black
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
     currentY += 15;
 
@@ -513,9 +514,10 @@ export default function GenerateQuote() {
       ],
       theme: 'grid',
       styles: {
-        fontSize: 8,
+        fontSize: 10,
         cellPadding: 2,
-        textColor: 0
+        textColor: 0,
+        fontStyle: 'bold'
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -538,18 +540,17 @@ export default function GenerateQuote() {
 
     // Grand Total
     checkPageBreak(30);
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
     currentY += 25;
 
     // Flat Booking Agreement (Same as SavedQuotes)
     checkPageBreak(50);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`I understand that flat No.${quoteData.flatNo} has been allotted to me and I agree to provide first`, margin, currentY);
     currentY += 6;
-    doc.setFont('helvetica', 'normal');
     doc.text('disbursement within 30 days from booking date. Failing to do so I agree that', margin, currentY);
     currentY += 6;
     doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
@@ -562,8 +563,8 @@ export default function GenerateQuote() {
     currentY += 10;
 
     // Customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
 
     // Save PDF
@@ -594,19 +595,17 @@ export default function GenerateQuote() {
     };
 
     // Header
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 15;
 
     // Customer Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
     currentY += 7;
-    doc.setFont('helvetica', 'normal');
     doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
     currentY += 12;
 
@@ -616,7 +615,7 @@ export default function GenerateQuote() {
       head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
       body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+      styles: { fontSize: 12, cellPadding: 3, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin }
@@ -629,7 +628,7 @@ export default function GenerateQuote() {
       head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+      styles: { fontSize: 12, cellPadding: 3, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin }
@@ -653,7 +652,7 @@ export default function GenerateQuote() {
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+      styles: { fontSize: 10, cellPadding: 2, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin },
@@ -669,7 +668,7 @@ export default function GenerateQuote() {
 
     // Total Flat Amount
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
     currentY += 15;
 
@@ -689,7 +688,7 @@ export default function GenerateQuote() {
         ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+      styles: { fontSize: 10, cellPadding: 2, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin },
@@ -705,18 +704,17 @@ export default function GenerateQuote() {
 
     // Grand Total
     checkPageBreak(30);
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
     currentY += 25;
 
     // Flat Booking Agreement (Same as SavedQuotes)
     checkPageBreak(50);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`I understand that flat No.${quoteData.flatNo} has been allotted to me and I agree to provide first`, margin, currentY);
     currentY += 5;
-    doc.setFont('helvetica', 'normal');
     doc.text('disbursement within 30 days from booking date. Failing to do so I agree that', margin, currentY);
     currentY += 5;
     doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
@@ -729,8 +727,8 @@ export default function GenerateQuote() {
     currentY += 10;
 
     // Customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
 
     const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -782,19 +780,17 @@ export default function GenerateQuote() {
     };
 
     // Header
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Quote', 105, currentY, { align: 'center' });
     currentY += 15;
 
     // Customer Details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.text(`Customer: ${quoteData.customerTitle} `, margin, currentY);
     doc.text(`${quoteData.customerName}`, margin + doc.getTextWidth(`Customer: ${quoteData.customerTitle} `), currentY);
     currentY += 7;
-    doc.setFont('helvetica', 'normal');
     doc.text(`Phone: ${quoteData.customerPhone}`, margin, currentY);
     currentY += 12;
 
@@ -804,7 +800,7 @@ export default function GenerateQuote() {
       head: [['Flat No.', 'Wing', 'Super Built Up Area', 'Terrace Area', 'Total']],
       body: [[quoteData.flatNo.toString(), quoteData?.wing || "", quoteData.superBuiltUp.toString(), quoteData.terraceArea.toString(), quoteData.totalArea.toString()]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+      styles: { fontSize: 12, cellPadding: 3, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin }
@@ -817,7 +813,7 @@ export default function GenerateQuote() {
       head: [['', 'Loan Amount', 'Agreement Amount']],
       body: [['', formatINR(quoteData.loanAmount), formatINR(quoteData.agreementAmount)]],
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3, textColor: 0 },
+      styles: { fontSize: 12, cellPadding: 3, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin }
@@ -841,7 +837,7 @@ export default function GenerateQuote() {
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+      styles: { fontSize: 10, cellPadding: 2, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin },
@@ -857,7 +853,7 @@ export default function GenerateQuote() {
 
     // Total Flat Amount
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.text(`Total Flat Amt: ${formatINR(quoteData.agreementAmount)}`, margin, currentY);
     currentY += 15;
 
@@ -877,7 +873,7 @@ export default function GenerateQuote() {
         ['', '', '', 'Total', formatINR(quoteData.totalStatutories)]
       ],
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+      styles: { fontSize: 10, cellPadding: 2, textColor: 0, fontStyle: 'bold' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 0 },
       margin: { left: margin, right: margin },
@@ -893,18 +889,17 @@ export default function GenerateQuote() {
 
     // Grand Total
     checkPageBreak(30);
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: ${formatINR(quoteData.grandTotal)}`, margin, currentY);
     currentY += 25;
 
     // Flat Booking Agreement
     checkPageBreak(50);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`I understand that flat No.${quoteData.flatNo} has been allotted to me and I agree to provide first`, margin, currentY);
     currentY += 5;
-    doc.setFont('helvetica', 'normal');
     doc.text('disbursement within 30 days from booking date. Failing to do so I agree that', margin, currentY);
     currentY += 5;
     doc.text('flat rate increase by Rs.50/- per sqft', margin, currentY);
@@ -917,8 +912,8 @@ export default function GenerateQuote() {
     currentY += 10;
 
     // Customer name under signature
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(`${quoteData.customerTitle} ${quoteData.customerName}`, margin, currentY);
 
     const fileName = `Quote_${quoteData.building}_Flat${quoteData.flatNo}_${new Date().toISOString().split('T')[0]}.pdf`;
