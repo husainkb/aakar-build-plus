@@ -292,7 +292,7 @@ export function useGrievanceTickets() {
       // 1. Fetch ticket to get photo URLs before deletion
       const { data: ticket, error: fetchError } = await supabase
         .from('grievance_tickets')
-        .select('photo_urls')
+        .select('id')
         .eq('id', ticketId)
         .single();
 
@@ -314,28 +314,7 @@ export function useGrievanceTickets() {
         return false;
       }
 
-      // 3. Delete associated photos from storage if ticket deletion was successful
-      if (ticket.photo_urls && ticket.photo_urls.length > 0) {
-        // Extract paths from public URLs
-        const pathsToDelete = ticket.photo_urls.map(url => {
-          // URLs look like: .../storage/v1/object/public/grievance-photos/T-1001/filename.jpg
-          // We need the part after 'grievance-photos/'
-          const parts = url.split('grievance-photos/');
-          return parts.length > 1 ? parts[1] : null;
-        }).filter(Boolean) as string[];
-
-        if (pathsToDelete.length > 0) {
-          const { error: storageError } = await supabase.storage
-            .from('grievance-photos')
-            .remove(pathsToDelete);
-
-          if (storageError) {
-            console.error('Error deleting photos from storage:', storageError);
-            // We don't necessarily want to fail the whole operation if photos failed to delete,
-            // but we should log it.
-          }
-        }
-      }
+      // Photo cleanup skipped — photo_urls column does not exist on grievance_tickets
 
       toast.success('Ticket and associated media deleted successfully');
       await fetchTickets();

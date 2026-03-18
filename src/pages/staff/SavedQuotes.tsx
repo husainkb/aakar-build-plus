@@ -33,8 +33,8 @@ interface SavedQuote {
   stamp_duty: number;
   legal_charges: number;
   other_charges: number;
-  loan_amount: number;
-  own_amt: number;
+  loan_amount?: number;
+  own_amt?: number;
   total_amount: number;
   payment_schedule: Array<{ text: string; value: number }>;
   created_at: string;

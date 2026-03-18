@@ -22,7 +22,7 @@ export function useCustomerSearch() {
   const [matchingCustomers, setMatchingCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerSelected, setCustomerSelected] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced search for customers by phone number (partial match)
   const searchCustomersByPhone = useCallback(async (phoneNumber: string): Promise<void> => {
