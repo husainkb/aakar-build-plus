@@ -450,6 +450,7 @@ export default function Bookings() {
     }
   };
 
+  const handleDownloadQuote = async (flat: Flat) => {
     if (!flat.booked_customer_id || !flat.booking_rate_per_sqft) {
       toast.error('Customer or booking rate information missing');
       return;
