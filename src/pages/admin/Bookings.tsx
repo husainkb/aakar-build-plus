@@ -414,7 +414,42 @@ export default function Bookings() {
     setLoading(false);
   };
 
-  const handleDownloadQuote = async (flat: Flat) => {
+  const handleUnbookFlat = async () => {
+    if (!selectedFlat) return;
+    setUnbookingLoading(true);
+    try {
+      const { error } = await supabase
+        .from('flats')
+        .update({
+          booked_status: 'Not Booked',
+          booked_customer_id: null,
+          booking_rate_per_sqft: null,
+          booking_created_by: null,
+          possession_enabled: false,
+          possession_status: 'not_started',
+          expected_possession_date: null,
+          actual_possession_date: null,
+          possession_notes: null,
+          final_payment_status: 'pending',
+        })
+        .eq('id', selectedFlat.id);
+
+      if (error) {
+        toast.error('Failed to unbook flat');
+      } else {
+        toast.success('Flat unbooked successfully');
+        setUnbookDialogOpen(false);
+        setDialogOpen(false);
+        fetchFlats();
+        resetCustomerFields();
+      }
+    } catch {
+      toast.error('Failed to unbook flat');
+    } finally {
+      setUnbookingLoading(false);
+    }
+  };
+
     if (!flat.booked_customer_id || !flat.booking_rate_per_sqft) {
       toast.error('Customer or booking rate information missing');
       return;
