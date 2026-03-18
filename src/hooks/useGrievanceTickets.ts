@@ -292,7 +292,7 @@ export function useGrievanceTickets() {
       // 1. Fetch ticket to get photo URLs before deletion
       const { data: ticket, error: fetchError } = await supabase
         .from('grievance_tickets')
-        .select('photo_urls')
+        .select('id')
         .eq('id', ticketId)
         .single();
 
