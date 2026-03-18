@@ -10,7 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, Loader2, Key, BookOpen } from 'lucide-react';
+import { Search, Download, Loader2, Key, BookOpen, Ban } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
@@ -96,6 +106,8 @@ export default function Bookings() {
   const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [unbookDialogOpen, setUnbookDialogOpen] = useState(false);
+  const [unbookingLoading, setUnbookingLoading] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const customerLoadedRef = useRef(false);
@@ -400,6 +412,42 @@ export default function Bookings() {
     }
 
     setLoading(false);
+  };
+
+  const handleUnbookFlat = async () => {
+    if (!selectedFlat) return;
+    setUnbookingLoading(true);
+    try {
+      const { error } = await supabase
+        .from('flats')
+        .update({
+          booked_status: 'Not Booked',
+          booked_customer_id: null,
+          booking_rate_per_sqft: null,
+          booking_created_by: null,
+          possession_enabled: false,
+          possession_status: 'not_started',
+          expected_possession_date: null,
+          actual_possession_date: null,
+          possession_notes: null,
+          final_payment_status: 'pending',
+        })
+        .eq('id', selectedFlat.id);
+
+      if (error) {
+        toast.error('Failed to unbook flat');
+      } else {
+        toast.success('Flat unbooked successfully');
+        setUnbookDialogOpen(false);
+        setDialogOpen(false);
+        fetchFlats();
+        resetCustomerFields();
+      }
+    } catch {
+      toast.error('Failed to unbook flat');
+    } finally {
+      setUnbookingLoading(false);
+    }
   };
 
   const handleDownloadQuote = async (flat: Flat) => {
@@ -800,12 +848,49 @@ export default function Bookings() {
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              {loading ? 'Saving...' : selectedFlat?.booked_status === 'Booked' ? 'Update Booking' : 'Book Flat'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                {loading ? 'Saving...' : selectedFlat?.booked_status === 'Booked' ? 'Update Booking' : 'Book Flat'}
+              </Button>
+              {selectedFlat?.booked_status === 'Booked' && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={loading || unbookingLoading}
+                  className="w-full sm:w-auto"
+                  onClick={() => setUnbookDialogOpen(true)}
+                >
+                  <Ban className="h-4 w-4 mr-1" />
+                  Unbook Flat
+                </Button>
+              )}
+            </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Unbook Confirmation Dialog */}
+      <AlertDialog open={unbookDialogOpen} onOpenChange={setUnbookDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to unbook this flat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the booking, disassociate the customer, and reset possession details for flat{' '}
+              {selectedFlat?.wing ? `${selectedFlat.wing}-` : ''}{selectedFlat?.flat_no}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unbookingLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnbookFlat}
+              disabled={unbookingLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {unbookingLoading ? 'Unbooking...' : 'Yes, Unbook Flat'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
