@@ -848,12 +848,52 @@ export default function Bookings() {
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              {loading ? 'Saving...' : selectedFlat?.booked_status === 'Booked' ? 'Update Booking' : 'Book Flat'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                {loading ? 'Saving...' : selectedFlat?.booked_status === 'Booked' ? 'Update Booking' : 'Book Flat'}
+              </Button>
+              {selectedFlat?.booked_status === 'Booked' && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={loading || unbookingLoading}
+                  className="w-full sm:w-auto"
+                  onClick={() => setUnbookDialogOpen(true)}
+                >
+                  <Ban className="h-4 w-4 mr-1" />
+                  Unbook Flat
+                </Button>
+              )}
+            </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Unbook Confirmation Dialog */}
+      <AlertDialog open={unbookDialogOpen} onOpenChange={setUnbookDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to unbook this flat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the booking, disassociate the customer, and reset possession details for flat{' '}
+              {selectedFlat?.wing ? `${selectedFlat.wing}-` : ''}{selectedFlat?.flat_no}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unbookingLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnbookFlat}
+              disabled={unbookingLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {unbookingLoading ? 'Unbooking...' : 'Yes, Unbook Flat'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
     </div>
   );
 }
