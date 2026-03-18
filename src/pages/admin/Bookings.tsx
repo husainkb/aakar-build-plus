@@ -106,6 +106,8 @@ export default function Bookings() {
   const [bookingRatePerSqft, setBookingRatePerSqft] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [unbookDialogOpen, setUnbookDialogOpen] = useState(false);
+  const [unbookingLoading, setUnbookingLoading] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const customerLoadedRef = useRef(false);
