@@ -135,35 +135,58 @@ export type Database = {
       }
       feedback: {
         Row: {
+          building_id: string | null
           comments: string | null
           created_at: string
           customer_id: string
+          flat_id: string | null
           id: string
           rating: number
           staff_id: string | null
+          suggestions: string | null
         }
         Insert: {
+          building_id?: string | null
           comments?: string | null
           created_at?: string
           customer_id: string
+          flat_id?: string | null
           id?: string
           rating: number
           staff_id?: string | null
+          suggestions?: string | null
         }
         Update: {
+          building_id?: string | null
           comments?: string | null
           created_at?: string
           customer_id?: string
+          flat_id?: string | null
           id?: string
           rating?: number
           staff_id?: string | null
+          suggestions?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "feedback_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedback_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
             referencedColumns: ["id"]
           },
           {
