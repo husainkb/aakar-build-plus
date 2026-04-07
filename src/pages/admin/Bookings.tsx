@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, Loader2, Key, BookOpen, Ban } from 'lucide-react';
+import { Search, Download, Loader2, Key, BookOpen, Ban, Copy, CheckCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
