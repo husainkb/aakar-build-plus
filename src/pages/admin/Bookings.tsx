@@ -405,9 +405,11 @@ export default function Bookings() {
         toast.error('Failed to book flat');
       } else {
         toast.success('Flat booked successfully');
-        setDialogOpen(false);
         fetchFlats();
-        resetCustomerFields();
+        if (!newCustomerCredentials) {
+          setDialogOpen(false);
+          resetCustomerFields();
+        }
       }
     } catch (error) {
       toast.error('Failed to save booking');
