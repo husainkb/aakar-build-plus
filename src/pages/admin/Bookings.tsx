@@ -109,6 +109,7 @@ export default function Bookings() {
   const [unbookDialogOpen, setUnbookDialogOpen] = useState(false);
   const [unbookingLoading, setUnbookingLoading] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [newCustomerCredentials, setNewCustomerCredentials] = useState<{ email: string; password: string } | null>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const customerLoadedRef = useRef(false);
 
