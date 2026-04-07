@@ -378,6 +378,7 @@ export default function Bookings() {
             toast.error('Customer account creation failed: ' + errMsg);
           } else {
             toast.success('Customer login account created!');
+            setNewCustomerCredentials({ email: customerEmail, password: DEFAULT_CUSTOMER_PASSWORD });
           }
         }
       }
