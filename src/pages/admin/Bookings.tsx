@@ -630,7 +630,10 @@ export default function Bookings() {
       {/* Booking Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);
-        if (!open) resetCustomerFields();
+        if (!open) {
+          resetCustomerFields();
+          setNewCustomerCredentials(null);
+        }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
