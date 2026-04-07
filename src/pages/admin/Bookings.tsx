@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, Loader2, Key, BookOpen, Ban } from 'lucide-react';
+import { Search, Download, Loader2, Key, BookOpen, Ban, Copy, CheckCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,6 +109,7 @@ export default function Bookings() {
   const [unbookDialogOpen, setUnbookDialogOpen] = useState(false);
   const [unbookingLoading, setUnbookingLoading] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [newCustomerCredentials, setNewCustomerCredentials] = useState<{ email: string; password: string } | null>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const customerLoadedRef = useRef(false);
 
@@ -377,6 +378,7 @@ export default function Bookings() {
             toast.error('Customer account creation failed: ' + errMsg);
           } else {
             toast.success('Customer login account created!');
+            setNewCustomerCredentials({ email: customerEmail, password: DEFAULT_CUSTOMER_PASSWORD });
           }
         }
       }
@@ -403,9 +405,11 @@ export default function Bookings() {
         toast.error('Failed to book flat');
       } else {
         toast.success('Flat booked successfully');
-        setDialogOpen(false);
         fetchFlats();
-        resetCustomerFields();
+        if (!newCustomerCredentials) {
+          setDialogOpen(false);
+          resetCustomerFields();
+        }
       }
     } catch (error) {
       toast.error('Failed to save booking');
@@ -626,7 +630,10 @@ export default function Bookings() {
       {/* Booking Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);
-        if (!open) resetCustomerFields();
+        if (!open) {
+          resetCustomerFields();
+          setNewCustomerCredentials(null);
+        }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -866,6 +873,68 @@ export default function Bookings() {
               )}
             </div>
           </form>
+
+          {newCustomerCredentials && (
+            <div className="mt-4 p-4 border-2 border-primary/30 bg-primary/5 rounded-lg space-y-3">
+              <h4 className="font-semibold text-foreground flex items-center gap-2">
+                <Key className="h-4 w-4 text-primary" />
+                Customer Login Credentials
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Share these details with the customer so they can access their dashboard:
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between bg-background p-2 rounded border">
+                  <span><span className="text-muted-foreground">Login URL:</span>{' '}
+                    <span className="font-mono text-foreground">{window.location.origin}/customer/login</span>
+                  </span>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/customer/login`);
+                    toast.success('URL copied!');
+                  }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between bg-background p-2 rounded border">
+                  <span><span className="text-muted-foreground">Email:</span>{' '}
+                    <span className="font-medium text-foreground">{newCustomerCredentials.email}</span>
+                  </span>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    navigator.clipboard.writeText(newCustomerCredentials.email);
+                    toast.success('Email copied!');
+                  }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between bg-background p-2 rounded border">
+                  <span><span className="text-muted-foreground">Password:</span>{' '}
+                    <span className="font-mono text-foreground">{newCustomerCredentials.password}</span>
+                  </span>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    navigator.clipboard.writeText(newCustomerCredentials.password);
+                    toast.success('Password copied!');
+                  }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => {
+                const text = `Customer Login Details\nURL: ${window.location.origin}/customer/login\nEmail: ${newCustomerCredentials.email}\nPassword: ${newCustomerCredentials.password}`;
+                navigator.clipboard.writeText(text);
+                toast.success('All credentials copied!');
+              }}>
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Copy All Credentials
+              </Button>
+              <Button type="button" className="w-full" onClick={() => {
+                setDialogOpen(false);
+                resetCustomerFields();
+                setNewCustomerCredentials(null);
+              }}>
+                Done
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
