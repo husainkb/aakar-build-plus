@@ -883,39 +883,27 @@ export default function Bookings() {
               <p className="text-sm text-muted-foreground">
                 Share these details with the customer so they can access their dashboard:
               </p>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between bg-background p-2 rounded border">
+              <div className="space-y-2 text-sm select-text">
+                <div className="flex items-center justify-between bg-background p-2 rounded border cursor-text"
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/customer/login`); toast.success('URL copied!'); }}>
                   <span><span className="text-muted-foreground">Login URL:</span>{' '}
-                    <span className="font-mono text-foreground">{window.location.origin}/customer/login</span>
+                    <span className="font-mono text-foreground select-all">{window.location.origin}/customer/login</span>
                   </span>
-                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/customer/login`);
-                    toast.success('URL copied!');
-                  }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-2" />
                 </div>
-                <div className="flex items-center justify-between bg-background p-2 rounded border">
+                <div className="flex items-center justify-between bg-background p-2 rounded border cursor-text"
+                  onClick={() => { navigator.clipboard.writeText(newCustomerCredentials.email); toast.success('Email copied!'); }}>
                   <span><span className="text-muted-foreground">Email:</span>{' '}
-                    <span className="font-medium text-foreground">{newCustomerCredentials.email}</span>
+                    <span className="font-medium text-foreground select-all">{newCustomerCredentials.email}</span>
                   </span>
-                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    navigator.clipboard.writeText(newCustomerCredentials.email);
-                    toast.success('Email copied!');
-                  }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-2" />
                 </div>
-                <div className="flex items-center justify-between bg-background p-2 rounded border">
+                <div className="flex items-center justify-between bg-background p-2 rounded border cursor-text"
+                  onClick={() => { navigator.clipboard.writeText(newCustomerCredentials.password); toast.success('Password copied!'); }}>
                   <span><span className="text-muted-foreground">Password:</span>{' '}
-                    <span className="font-mono text-foreground">{newCustomerCredentials.password}</span>
+                    <span className="font-mono text-foreground select-all">{newCustomerCredentials.password}</span>
                   </span>
-                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    navigator.clipboard.writeText(newCustomerCredentials.password);
-                    toast.success('Password copied!');
-                  }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-2" />
                 </div>
               </div>
               <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => {
