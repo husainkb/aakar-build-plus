@@ -36,6 +36,8 @@ import CustomerFeedback from "./pages/customer/Feedback";
 import ChangePassword from "./pages/shared/ChangePassword";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/auth/Signup";
+import CreateStaff from "./pages/admin/CreateStaff";
+import { GrievanceNotificationListener } from "./components/GrievanceNotificationListener";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <GrievanceNotificationListener />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

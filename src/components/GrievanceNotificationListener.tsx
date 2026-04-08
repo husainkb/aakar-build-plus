@@ -17,14 +17,14 @@ function playNotificationSound() {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.5);
-  } catch (e) {
+  } catch {
     // Audio not supported, silently fail
   }
 }
 
 export function GrievanceNotificationListener() {
   const { user, userRole } = useAuth();
-  const previousTicketsRef = useRef<Set<string>>(new Set());
+  
   const initializedRef = useRef(false);
 
   useEffect(() => {
