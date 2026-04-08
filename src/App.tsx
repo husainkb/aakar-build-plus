@@ -70,6 +70,7 @@ const App = () => (
               <Route path="/admin/staff-management" element={<ProtectedRoute requiredRole="admin"><StaffManagement /></ProtectedRoute>} />
               <Route path="/admin/grievances" element={<ProtectedRoute requiredRole="admin"><AdminGrievances /></ProtectedRoute>} />
               <Route path="/admin/feedback" element={<ProtectedRoute requiredRole="admin"><AdminFeedback /></ProtectedRoute>} />
+              <Route path="/admin/create-staff" element={<ProtectedRoute requiredRole="admin"><CreateStaff /></ProtectedRoute>} />
               <Route path="/admin/change-password" element={<ProtectedRoute requiredRole="admin"><ChangePassword /></ProtectedRoute>} />
               {/* Manager Routes */}
               <Route path="/manager/dashboard" element={<ProtectedRoute requiredRole="manager"><ManagerDashboard /></ProtectedRoute>} />
