@@ -598,6 +598,44 @@ export type Database = {
           },
         ]
       }
+      ticket_comments: {
+        Row: {
+          comment_text: string
+          commenter_id: string
+          commenter_name: string
+          commenter_type: string
+          created_at: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          comment_text: string
+          commenter_id: string
+          commenter_name?: string
+          commenter_type?: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          comment_text?: string
+          commenter_id?: string
+          commenter_name?: string
+          commenter_type?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "grievance_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       profiles_public: {
