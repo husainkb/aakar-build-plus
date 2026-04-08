@@ -32,7 +32,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, Loader2, Clock, AlertTriangle, Upload, X } from 'lucide-react';
+import { Plus, Loader2, Clock, AlertTriangle, Upload, X, Eye } from 'lucide-react';
+import TicketDetailModal from '@/components/TicketDetailModal';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface Building {
@@ -92,6 +93,8 @@ export default function CustomerGrievances() {
   const [customerRecord, setCustomerRecord] = useState<{ id: string } | null>(null);
   const [customerFlats, setCustomerFlats] = useState<Flat[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewTicket, setViewTicket] = useState<GrievanceTicket | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedWing, setSelectedWing] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);

@@ -500,6 +500,13 @@ export default function StaffGrievancesPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* View Ticket Details with Comments */}
+        <TicketDetailModal
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          ticket={selectedTicket}
+        />
       </div>
     </>
   );
