@@ -70,6 +70,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: '/admin/feedback', label: 'Feedback', icon: MessageSquare },
     { href: '/admin/reports', label: 'Reports', icon: FileBarChart },
     { href: '/admin/staff-management', label: 'Staff Management', icon: Users },
+    { href: '/admin/create-staff', label: 'Create Staff', icon: UserPlus },
     { href: '/admin/change-password', label: 'Change Password', icon: Lock },
   ];
 
