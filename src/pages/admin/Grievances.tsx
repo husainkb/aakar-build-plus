@@ -47,6 +47,7 @@ import { useGrievanceTickets, GrievanceTicket, CreateTicketData } from '@/hooks/
 import { useStaffMembers } from '@/hooks/useStaffMembers';
 import { toast } from 'sonner';
 import { Plus, Download, Search, AlertTriangle, Clock, CheckCircle, Loader2, FileText, History, Trash2, User, Eye, UserPlus, ImageIcon } from 'lucide-react';
+import TicketDetailModal from '@/components/TicketDetailModal';
 import { format, formatDistanceToNow } from 'date-fns';
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 
@@ -1087,118 +1088,12 @@ export default function GrievancesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* View Ticket Details Dialog */}
-        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Ticket Details</DialogTitle>
-            </DialogHeader>
-            {selectedTicket && (
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ticket Number</p>
-                    <p className="font-medium">{selectedTicket.ticket_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    {getStatusBadge(selectedTicket.status)}
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Priority</p>
-                    {getPriorityBadge(selectedTicket.priority)}
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-medium">{selectedTicket.grievance_type}</p>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <p className="text-sm text-muted-foreground mb-1">Customer</p>
-                  <p className="font-medium">{selectedTicket.customer?.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedTicket.customer?.phone_number}</p>
-                  {selectedTicket.customer?.email && (
-                    <p className="text-sm text-muted-foreground">{selectedTicket.customer?.email}</p>
-                  )}
-                </div>
-
-                {(selectedTicket.building || selectedTicket.flat) && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-1">Property</p>
-                    {selectedTicket.building && (
-                      <p className="font-medium">Building: {selectedTicket.building.name}</p>
-                    )}
-                    {selectedTicket.flat && (
-                      <p className="text-sm">
-                        {selectedTicket.flat.wing ? `Wing ${selectedTicket.flat.wing} - ` : ''}
-                        Flat {selectedTicket.flat.flat_no} (Floor {selectedTicket.flat.floor}, {selectedTicket.flat.type})
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {selectedTicket.assigned_staff && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-1">Assigned Staff</p>
-                    <p className="font-medium">{selectedTicket.assigned_staff.name}</p>
-                  </div>
-                )}
-
-                <div className="border-t pt-4">
-                  <p className="text-sm text-muted-foreground mb-1">Description</p>
-                  <p className="text-sm whitespace-pre-wrap">{selectedTicket.description}</p>
-                </div>
-
-                {selectedTicket.photo_urls && selectedTicket.photo_urls.length > 0 && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
-                      <ImageIcon className="h-4 w-4" />
-                      Attached Photos ({selectedTicket.photo_urls.length})
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTicket.photo_urls.map((url, idx) => (
-                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                          <img
-                            src={url}
-                            alt={`Photo ${idx + 1}`}
-                            className="h-20 w-20 object-cover rounded-md border hover:opacity-80 transition-opacity"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedTicket.resolution_note && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-1">Resolution Note</p>
-                    <p className="text-sm whitespace-pre-wrap">{selectedTicket.resolution_note}</p>
-                  </div>
-                )}
-
-                <div className="border-t pt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Created</p>
-                    <p>{format(new Date(selectedTicket.created_at), 'dd/MM/yyyy HH:mm')}</p>
-                  </div>
-                  {selectedTicket.resolved_at && (
-                    <div>
-                      <p className="text-muted-foreground">Resolved</p>
-                      <p>{format(new Date(selectedTicket.resolved_at), 'dd/MM/yyyy HH:mm')}</p>
-                    </div>
-                  )}
-                  {selectedTicket.escalated && selectedTicket.escalated_at && (
-                    <div>
-                      <p className="text-muted-foreground text-orange-500">Escalated</p>
-                      <p>{format(new Date(selectedTicket.escalated_at), 'dd/MM/yyyy HH:mm')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* View Ticket Details with Comments */}
+        <TicketDetailModal
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          ticket={selectedTicket}
+        />
         {/* Assign Ticket Dialog */}
         <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
           <DialogContent>
