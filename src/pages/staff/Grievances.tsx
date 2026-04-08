@@ -33,7 +33,8 @@ import { useGrievanceTickets, GrievanceTicket } from '@/hooks/useGrievanceTicket
 import { downloadQuote, QuoteData } from '@/lib/quoteGenerator';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Download, AlertTriangle, Clock, CheckCircle, Loader2, History } from 'lucide-react';
+import { Download, AlertTriangle, Clock, CheckCircle, Loader2, History, Eye } from 'lucide-react';
+import TicketDetailModal from '@/components/TicketDetailModal';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface Building {
@@ -61,6 +62,7 @@ export default function StaffGrievancesPage() {
 
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<GrievanceTicket | null>(null);
   const [newStatus, setNewStatus] = useState<GrievanceTicket['status']>('open');
   const [resolutionNote, setResolutionNote] = useState('');
@@ -339,6 +341,17 @@ export default function StaffGrievancesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => {
+                                    setSelectedTicket(ticket);
+                                    setIsViewOpen(true);
+                                  }}
+                                  title="View Details & Comments"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => openStatusDialog(ticket)}
                                 >
                                   <CheckCircle className="h-4 w-4" />
@@ -487,6 +500,13 @@ export default function StaffGrievancesPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* View Ticket Details with Comments */}
+        <TicketDetailModal
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          ticket={selectedTicket}
+        />
       </div>
     </>
   );

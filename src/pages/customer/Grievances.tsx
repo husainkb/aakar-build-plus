@@ -32,7 +32,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, Loader2, Clock, AlertTriangle, Upload, X } from 'lucide-react';
+import { Plus, Loader2, Clock, AlertTriangle, Upload, X, Eye } from 'lucide-react';
+import TicketDetailModal from '@/components/TicketDetailModal';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface Building {
@@ -92,6 +93,8 @@ export default function CustomerGrievances() {
   const [customerRecord, setCustomerRecord] = useState<{ id: string } | null>(null);
   const [customerFlats, setCustomerFlats] = useState<Flat[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewTicket, setViewTicket] = useState<GrievanceTicket | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedWing, setSelectedWing] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);
@@ -551,6 +554,7 @@ export default function CustomerGrievances() {
                           <TableHead>Status</TableHead>
                           <TableHead>Created</TableHead>
                           <TableHead>Resolution</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -582,11 +586,24 @@ export default function CustomerGrievances() {
                                 <span className="text-xs text-muted-foreground">Pending</span>
                               )}
                             </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setViewTicket(ticket as any);
+                                  setIsViewOpen(true);
+                                }}
+                                title="View Details & Comments"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                         {filterTicketsByStatus(status).length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                               No tickets found
                             </TableCell>
                           </TableRow>
@@ -599,6 +616,13 @@ export default function CustomerGrievances() {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* View Ticket Details with Comments */}
+        <TicketDetailModal
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          ticket={viewTicket}
+        />
       </div>
     </>
   );
