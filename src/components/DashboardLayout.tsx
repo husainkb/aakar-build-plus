@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Building2, LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, MessageSquareWarning, BookOpen, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Building, Home, FileText, LogOut, FileBarChart, Menu, Lock, FolderOpen, Users, UserPlus, MessageSquareWarning, BookOpen, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
