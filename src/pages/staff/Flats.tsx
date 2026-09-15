@@ -275,8 +275,17 @@ export default function StaffFlats() {
 
         if (!existingCustomer?.user_id) {
           const password = DEFAULT_CUSTOMER_PASSWORD;
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) {
+            toast.error('Session expired. Please login again.');
+            setLoading(false);
+            return;
+          }
           
           const response = await supabase.functions.invoke('create-customer-account', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
             body: {
               email: customerEmail,
               name: fullName,

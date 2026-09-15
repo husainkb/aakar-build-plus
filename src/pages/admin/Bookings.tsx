@@ -315,6 +315,8 @@ export default function Bookings() {
     setDialogOpen(true);
   };
 
+  console.log(newCustomerCredentials)
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!customerTitle.trim()) newErrors.customerTitle = 'Title is required';
@@ -364,7 +366,16 @@ export default function Bookings() {
           .single();
 
         if (!existingCustomer?.user_id) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) {
+            toast.error('Session expired. Please login again.');
+            return;
+          }
+
           const response = await supabase.functions.invoke('create-customer-account', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
             body: {
               email: customerEmail,
               name: fullName,

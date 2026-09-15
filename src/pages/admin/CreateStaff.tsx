@@ -59,6 +59,9 @@ export default function CreateStaff() {
       }
 
       const response = await supabase.functions.invoke('create-staff-account', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: { email: email.trim(), name: name.trim(), password, role },
       });
 
