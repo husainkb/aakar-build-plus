@@ -104,6 +104,30 @@ export default function GenerateQuote() {
   const [customerErrors, setCustomerErrors] = useState<{ [key: string]: string }>({});
   const [loanAmountInput, setLoanAmountInput] = useState<string>('');
   const [ownAmountInput, setOwnAmountInput] = useState<string>('');
+  // Per-quote overrides (never persisted back to the building preset)
+  const [agreementAmountInput, setAgreementAmountInput] = useState<string>('');
+  const [agreementAmountEdited, setAgreementAmountEdited] = useState<boolean>(false);
+  const [gstValueInput, setGstValueInput] = useState<string>('');
+  const [gstType, setGstType] = useState<'percent' | 'amount'>('percent');
+  const [stampDutyValueInput, setStampDutyValueInput] = useState<string>('');
+  const [stampDutyType, setStampDutyType] = useState<'percent' | 'amount'>('percent');
+
+  const selectedFlatObj = flats.find(f => f.id === selectedFlat);
+  const calculatedAgreementAmount = selectedFlatObj
+    ? (Number(selectedFlatObj.square_foot) + Number(selectedFlatObj.terrace_area || 0)) * (Number(ratePerSqft) || 0)
+    : 0;
+
+  // Reset manual edit flag whenever the property selection changes
+  useEffect(() => {
+    setAgreementAmountEdited(false);
+  }, [selectedBuilding, selectedFlat]);
+
+  // Auto-populate the editable Agreement Amount from the existing Area x Rate logic
+  useEffect(() => {
+    if (agreementAmountEdited) return;
+    if (!selectedFlat || !calculatedAgreementAmount) return;
+    setAgreementAmountInput(String(calculatedAgreementAmount));
+  }, [selectedFlat, calculatedAgreementAmount, agreementAmountEdited]);
 
   useEffect(() => {
     fetchBuildings();
@@ -160,9 +184,16 @@ export default function GenerateQuote() {
     setSelectedFlat('');
     setQuoteData(null);
     setRateError('');
+    setAgreementAmountInput('');
+    setAgreementAmountEdited(false);
     const building = buildings.find(b => b.id === value);
     if (building) {
       setRatePerSqft(Number(building.rate_per_sqft));
+      // Populate GST / Stamp Duty from the existing building preset (percentages)
+      setGstValueInput(String(Number(building.gst_tax) ?? ''));
+      setGstType('percent');
+      setStampDutyValueInput(String(Number(building.stamp_duty) ?? ''));
+      setStampDutyType('percent');
     }
   };
 
@@ -229,7 +260,17 @@ export default function GenerateQuote() {
     const totalArea = flat.square_foot + (flat.terrace_area || 0);
     // Use edited rate or original building rate
     const basicRate = ratePerSqft || Number(building.rate_per_sqft);
-    const agreementAmount = totalArea * basicRate;
+    const calculatedAmount = totalArea * basicRate;
+
+    // FINAL Agreement Amount: manual override if provided, otherwise existing Area x Rate
+    const agreementAmount = agreementAmountInput.trim() === ''
+      ? calculatedAmount
+      : parseFloat(agreementAmountInput);
+
+    if (!isFinite(agreementAmount) || isNaN(agreementAmount) || agreementAmount < 0) {
+      toast.error('Please enter a valid Agreement Amount');
+      return;
+    }
 
     // Manual Loan and Own amount
     const manualLoanAmount = parseFloat(loanAmountInput);
@@ -242,14 +283,27 @@ export default function GenerateQuote() {
 
     // Statuatories calculations with gender-based stamp duty discount
     const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
-    const gstTax = agreementAmount * (building.gst_tax / 100);
 
-    // Apply 1% discount on stamp duty for Female customers
-    let stampDutyPercent = building.stamp_duty;
-    if (customerGender === 'Female') {
-      stampDutyPercent = Math.max(0, stampDutyPercent - 1);
+    // GST — per-quote override (% of FINAL agreement amount, or fixed Rs.)
+    const gstEntered = gstValueInput.trim() === '' ? Number(building.gst_tax) : parseFloat(gstValueInput);
+    if (!isFinite(gstEntered) || isNaN(gstEntered) || gstEntered < 0 || (gstType === 'percent' && gstEntered > 100)) {
+      toast.error('Please enter a valid GST value');
+      return;
     }
-    const stampDuty = agreementAmount * (stampDutyPercent / 100);
+    const gstTax = gstType === 'percent' ? agreementAmount * (gstEntered / 100) : gstEntered;
+
+    // Stamp Duty — per-quote override (% of FINAL agreement amount, or fixed Rs.)
+    const sdEntered = stampDutyValueInput.trim() === '' ? Number(building.stamp_duty) : parseFloat(stampDutyValueInput);
+    if (!isFinite(sdEntered) || isNaN(sdEntered) || sdEntered < 0 || (stampDutyType === 'percent' && sdEntered > 100)) {
+      toast.error('Please enter a valid Stamp Duty value');
+      return;
+    }
+    // Apply 1% discount on stamp duty for Female customers (percentage mode only)
+    let stampDutyPercent = sdEntered;
+    if (stampDutyType === 'percent' && customerGender === 'Female') {
+      stampDutyPercent = Math.max(0, sdEntered - 1);
+    }
+    const stampDuty = stampDutyType === 'percent' ? agreementAmount * (stampDutyPercent / 100) : sdEntered;
 
     const statutories = {
       maintenance: building.maintenance,
@@ -266,8 +320,8 @@ export default function GenerateQuote() {
       maintenance: building.maintenance > 0 ? building.maintenance.toString() : '0',
       electrical: building.electrical_water_charges > 0 ? building.electrical_water_charges.toString() : '0',
       registration: building.registration_charges + '%',
-      gst: building.gst_tax + '%',
-      stampDuty: stampDutyPercent + '%',
+      gst: gstType === 'percent' ? gstEntered + '%' : 'Fixed',
+      stampDuty: stampDutyType === 'percent' ? stampDutyPercent + '%' : 'Fixed',
       legal: building.legal_charges > 0 ? building.legal_charges.toString() : '0',
       other: building.other_charges > 0 ? building.other_charges.toString() : '0'
     };
@@ -1160,6 +1214,66 @@ export default function GenerateQuote() {
                     value={ownAmountInput}
                     onChange={(e) => setOwnAmountInput(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="agreementAmount">Agreement Amount (Optional)</Label>
+                  <Input
+                    id="agreementAmount"
+                    placeholder="Enter agreement amount"
+                    type="number"
+                    value={agreementAmountInput}
+                    onChange={(e) => {
+                      setAgreementAmountEdited(true);
+                      setAgreementAmountInput(e.target.value);
+                    }}
+                  />
+                  {selectedFlat && (
+                    <p className="text-xs text-muted-foreground">
+                      Calculated: ₹{calculatedAgreementAmount.toLocaleString('en-IN')}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstOverride">GST</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="gstOverride"
+                      placeholder="0"
+                      type="number"
+                      value={gstValueInput}
+                      onChange={(e) => setGstValueInput(e.target.value)}
+                    />
+                    <Select value={gstType} onValueChange={(v) => setGstType(v as 'percent' | 'amount')}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">%</SelectItem>
+                        <SelectItem value="amount">₹</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stampDutyOverride">Stamp Duty</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="stampDutyOverride"
+                      placeholder="0"
+                      type="number"
+                      value={stampDutyValueInput}
+                      onChange={(e) => setStampDutyValueInput(e.target.value)}
+                    />
+                    <Select value={stampDutyType} onValueChange={(v) => setStampDutyType(v as 'percent' | 'amount')}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">%</SelectItem>
+                        <SelectItem value="amount">₹</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </CardContent>
