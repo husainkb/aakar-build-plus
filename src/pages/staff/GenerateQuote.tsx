@@ -885,9 +885,9 @@ export default function GenerateQuote() {
           paymentMode.text,
           `${paymentMode.value}%`,
           '',
-          formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
+          paymentMode.value === 0 ? formatINR(quoteData.ownAmount) : formatINR((quoteData.agreementAmount * paymentMode.value) / 100)
         ]),
-        ['', 'OWN AMT', '', '', ''],
+        ['', 'OWN AMT', '', '', formatINR(quoteData.ownAmount)],
         ['', '', '100%', '', formatINR(quoteData.agreementAmount)]
       ],
       theme: 'grid',
