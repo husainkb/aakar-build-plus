@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +13,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, user, userRole } = useAuth();
-  const navigate = useNavigate();
 
   // Redirect if already logged in
   if (user && userRole) {
-    const dashboardPath = userRole === 'admin' ? '/admin/dashboard' : 
+    const dashboardPath = userRole === 'admin' ? '/admin/dashboard' :
                           userRole === 'manager' ? '/manager/dashboard' : '/staff/dashboard';
-    navigate(dashboardPath);
-    return null;
+    return <Navigate to={dashboardPath} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

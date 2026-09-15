@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,7 @@ export default function CustomerLogin() {
 
   // Redirect if already logged in as customer
   if (user && userRole === 'customer') {
-    navigate('/customer/grievances');
-    return null;
+    return <Navigate to="/customer/grievances" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
