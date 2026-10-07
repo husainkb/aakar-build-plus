@@ -111,6 +111,10 @@ export default function GenerateQuote() {
   const [gstType, setGstType] = useState<'percent' | 'amount'>('percent');
   const [stampDutyValueInput, setStampDutyValueInput] = useState<string>('');
   const [stampDutyType, setStampDutyType] = useState<'percent' | 'amount'>('percent');
+  // Registration Charges — optional per-quote override, left empty by default so the
+  // existing Building-level Registration Charges keep driving the calculation
+  const [registrationValueInput, setRegistrationValueInput] = useState<string>('');
+  const [registrationType, setRegistrationType] = useState<'percent' | 'amount'>('percent');
 
   const selectedFlatObj = flats.find(f => f.id === selectedFlat);
   const calculatedAgreementAmount = selectedFlatObj
@@ -194,6 +198,9 @@ export default function GenerateQuote() {
       setGstType('percent');
       setStampDutyValueInput(String(Number(building.stamp_duty) ?? ''));
       setStampDutyType('percent');
+      // Registration Charges override stays empty so the Building value applies until overridden
+      setRegistrationValueInput('');
+      setRegistrationType('percent');
     }
   };
 
@@ -282,7 +289,28 @@ export default function GenerateQuote() {
     }
 
     // Statuatories calculations with gender-based stamp duty discount
-    const registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
+
+    // Registration Charges — per-quote override (% of FINAL agreement amount, or fixed Rs.)
+    // Empty input preserves the exact existing Building-level calculation.
+    let registrationCharges: number;
+    let registrationPercentDisplay: string;
+    if (registrationValueInput.trim() === '') {
+      registrationCharges = Math.min(agreementAmount * (building.registration_charges / 100), 30000);
+      registrationPercentDisplay = building.registration_charges + '%';
+    } else {
+      const regEntered = parseFloat(registrationValueInput);
+      if (!isFinite(regEntered) || isNaN(regEntered) || regEntered < 0 || (registrationType === 'percent' && regEntered > 100)) {
+        toast.error('Please enter a valid Registration Charges value');
+        return;
+      }
+      if (registrationType === 'percent') {
+        registrationCharges = Math.min(agreementAmount * (regEntered / 100), 30000);
+        registrationPercentDisplay = regEntered + '%';
+      } else {
+        registrationCharges = regEntered;
+        registrationPercentDisplay = 'Fixed';
+      }
+    }
 
     // GST — per-quote override (% of FINAL agreement amount, or fixed Rs.)
     const gstEntered = gstValueInput.trim() === '' ? Number(building.gst_tax) : parseFloat(gstValueInput);
@@ -319,7 +347,7 @@ export default function GenerateQuote() {
     const statutoriesPercent = {
       maintenance: building.maintenance > 0 ? building.maintenance.toString() : '0',
       electrical: building.electrical_water_charges > 0 ? building.electrical_water_charges.toString() : '0',
-      registration: building.registration_charges + '%',
+      registration: registrationPercentDisplay,
       gst: gstType === 'percent' ? gstEntered + '%' : 'Fixed',
       stampDuty: stampDutyType === 'percent' ? stampDutyPercent + '%' : 'Fixed',
       legal: building.legal_charges > 0 ? building.legal_charges.toString() : '0',
@@ -1232,6 +1260,27 @@ export default function GenerateQuote() {
                       Calculated: ₹{calculatedAgreementAmount.toLocaleString('en-IN')}
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registrationOverride">Registration Charges</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="registrationOverride"
+                      placeholder="Optional"
+                      type="number"
+                      value={registrationValueInput}
+                      onChange={(e) => setRegistrationValueInput(e.target.value)}
+                    />
+                    <Select value={registrationType} onValueChange={(v) => setRegistrationType(v as 'percent' | 'amount')}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">%</SelectItem>
+                        <SelectItem value="amount">₹</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gstOverride">GST</Label>
